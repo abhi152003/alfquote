@@ -1,0 +1,27 @@
+{
+  "name": "alfquote",
+  "version": "0.0.0",
+  "description": "Hook-aware discovery, assessment, and quoting for Uniswap v4 DualPool through IALFHook views",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=22.9.0"
+  },
+  "scripts": {
+    "dev": "node --import tsx --env-file-if-exists=.env --watch scripts/verify-mainnet.ts",
+    "type-check": "tsc --noEmit",
+    "build": "tsc --build",
+    "test": "vitest run",
+    "spike": "node --import tsx --env-file-if-exists=.env scripts/verify-mainnet.ts"
+  },
+  "dependencies": {
+    "viem": "^2.56.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
