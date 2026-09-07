@@ -1,0 +1,60 @@
+[
+  {
+    "type": "event",
+    "name": "Deployed",
+    "inputs": [
+      { "name": "deployed", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "creationCodeHash", "type": "bytes32", "indexed": true, "internalType": "bytes32" },
+      { "name": "deployer", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "constructorArgs", "type": "bytes", "indexed": false, "internalType": "bytes" },
+      { "name": "salt", "type": "bytes32", "indexed": false, "internalType": "bytes32" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "function",
+    "name": "allDeployments",
+    "stateMutability": "view",
+    "inputs": [{ "name": "index", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [{ "name": "deployed", "type": "address", "internalType": "address" }]
+  },
+  {
+    "type": "function",
+    "name": "allDeploymentsLength",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }]
+  },
+  {
+    "type": "function",
+    "name": "isFromFactory",
+    "stateMutability": "view",
+    "inputs": [{ "name": "deployed", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }]
+  },
+  {
+    "type": "function",
+    "name": "creationCodeHashOf",
+    "stateMutability": "view",
+    "inputs": [{ "name": "deployed", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "creationCodeHash", "type": "bytes32", "internalType": "bytes32" }]
+  },
+  {
+    "type": "function",
+    "name": "isAllowedCreationCode",
+    "stateMutability": "view",
+    "inputs": [{ "name": "creationCodeHash", "type": "bytes32", "internalType": "bytes32" }],
+    "outputs": [{ "name": "allowed", "type": "bool", "internalType": "bool" }]
+  },
+  {
+    "type": "function",
+    "name": "computeAddress",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "creationCode", "type": "bytes", "internalType": "bytes" },
+      { "name": "constructorArgs", "type": "bytes", "internalType": "bytes" },
+      { "name": "salt", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": [{ "name": "deployed", "type": "address", "internalType": "address" }]
+  }
+]

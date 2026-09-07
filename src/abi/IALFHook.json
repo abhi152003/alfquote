@@ -1,0 +1,66 @@
+[
+  {
+    "type": "function",
+    "name": "getIndicativeQuote",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+          { "name": "currency0", "type": "address", "internalType": "address" },
+          { "name": "currency1", "type": "address", "internalType": "address" },
+          { "name": "fee", "type": "uint24", "internalType": "uint24" },
+          { "name": "tickSpacing", "type": "int24", "internalType": "int24" },
+          { "name": "hooks", "type": "address", "internalType": "address" }
+        ]
+      },
+      { "name": "zeroForOne", "type": "bool", "internalType": "bool" },
+      { "name": "amountSpecified", "type": "int256", "internalType": "int256" },
+      { "name": "hookData", "type": "bytes", "internalType": "bytes" }
+    ],
+    "outputs": [{ "name": "outputAmount", "type": "uint256", "internalType": "uint256" }]
+  },
+  {
+    "type": "function",
+    "name": "isLive",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }]
+  },
+  {
+    "type": "function",
+    "name": "maxGas",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint32", "internalType": "uint32" }]
+  },
+  {
+    "type": "function",
+    "name": "swapToPrice",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+          { "name": "currency0", "type": "address", "internalType": "address" },
+          { "name": "currency1", "type": "address", "internalType": "address" },
+          { "name": "fee", "type": "uint24", "internalType": "uint24" },
+          { "name": "tickSpacing", "type": "int24", "internalType": "int24" },
+          { "name": "hooks", "type": "address", "internalType": "address" }
+        ]
+      },
+      { "name": "zeroForOne", "type": "bool", "internalType": "bool" },
+      { "name": "amountSpecified", "type": "int256", "internalType": "int256" },
+      { "name": "sqrtPriceLimitX96", "type": "uint160", "internalType": "uint160" },
+      { "name": "hookData", "type": "bytes", "internalType": "bytes" }
+    ],
+    "outputs": [
+      { "name": "amountIn", "type": "uint256", "internalType": "uint256" },
+      { "name": "amountOut", "type": "uint256", "internalType": "uint256" }
+    ]
+  }
+]

@@ -1,0 +1,3 @@
+[
+  { "type": "function", "name": "supportsInterface", "stateMutability": "view", "inputs": [{ "name": "interfaceId", "type": "bytes4" }], "outputs": [{ "name": "", "type": "bool" }] }
+]

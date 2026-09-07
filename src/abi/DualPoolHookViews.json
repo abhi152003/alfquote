@@ -1,0 +1,16 @@
+[
+  {
+    "type": "function",
+    "name": "factory",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }]
+  },
+  {
+    "type": "function",
+    "name": "livePools",
+    "stateMutability": "view",
+    "inputs": [{ "name": "poolId", "type": "bytes32", "internalType": "PoolId" }],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }]
+  }
+]

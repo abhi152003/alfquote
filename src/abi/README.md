@@ -1,14 +1,20 @@
 # ABI pins
 
-Read-only ABI JSON files pinned from the upstream sources live here. They are
-added by the go/no-go spike (WO-2) and must record the exact source revision:
+Read-only ABI JSON files pinned from upstream sources. Never bytecode.
 
-- `IALFHook.json` — quote surface (`isLive`, `maxGas`, `getIndicativeQuote`,
-  `swapToPrice`, `livePools`, `getReserves`, `getEffectiveLiquidity`) from
-  [v4-hooks-public](https://github.com/Uniswap/v4-hooks-public/blob/main/src/alf/interfaces/IALFHook.sol).
-- `AllowlistedFactory.json` — `allDeployments`, `isFromFactory`, `Deployed`
-  events from the same repository.
-- `PoolManager.json` — the v4 core views needed for the vanilla-liquidity
-  comparison.
+All files were derived from `Uniswap/v4-hooks-public` at revision
+`0f731d5de0f4fd60b506b55754d5e6ff086eab7d` (2026-08-19):
 
-ABIs only. This project never adds or modifies hook bytecode.
+| File | Source |
+| --- | --- |
+| `IERC165.json` | OpenZeppelin `IERC165` (via the interfaces' imports) |
+| `IHookStats.json` | `src/alf/interfaces/IHookStats.sol` |
+| `IALFHook.json` | `src/alf/interfaces/IALFHook.sol` |
+| `IAllowlistedFactory.json` | `src/interfaces/IAllowlistedFactory.sol` |
+| `DualPoolHookViews.json` | `factory()` from `src/alf/DualPoolHook.sol`, `livePools(PoolId)` from `src/alf/base/OwnedALFHook.sol` |
+| `IPoolManager.json` | `Initialize` event from Uniswap v4 core `IPoolManager` |
+
+Interface ids are computed from these ABIs at runtime (`src/interfaceId.ts`)
+and verified on-chain through `supportsInterface` in the spike. The exact
+evidence (block numbers, computed ids, reproduction commands) lives in
+[docs/pins.md](../../docs/pins.md).
