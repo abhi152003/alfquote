@@ -15,7 +15,8 @@
     "test": "vitest run",
     "spike": "node --import tsx --env-file-if-exists=.env scripts/verify-mainnet.ts",
     "proof": "node --import tsx --env-file-if-exists=.env scripts/prove-liquidity.ts",
-    "simulate": "node --import tsx --env-file-if-exists=.env scripts/simulate-swap.ts"
+    "simulate": "node --import tsx --env-file-if-exists=.env scripts/simulate-swap.ts",
+    "check-no-send": "bash scripts/check-no-send.sh"
   },
   "dependencies": {
     "viem": "^2.56.3"

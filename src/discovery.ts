@@ -10,8 +10,12 @@ export interface DeploymentRecord {
 export async function hasBytecode(
   client: PublicClient,
   address: Address,
+  blockNumber?: bigint,
 ): Promise<{ present: boolean; size: number }> {
-  const code = await client.getCode({ address });
+  const code = await client.getCode({
+    address,
+    ...(blockNumber !== undefined ? { blockNumber } : {}),
+  });
   const present = code !== undefined && code !== "0x";
   return { present, size: present ? (code.length - 2) / 2 : 0 };
 }
@@ -20,11 +24,14 @@ export async function hasBytecode(
 export async function enumerateDeployments(
   client: PublicClient,
   factory: Address,
+  blockNumber?: bigint,
 ): Promise<DeploymentRecord[]> {
+  const atBlock = blockNumber !== undefined ? { blockNumber } : {};
   const length = await client.readContract({
     address: factory,
     abi: factoryAbi,
     functionName: "allDeploymentsLength",
+    ...atBlock,
   });
   const deployments: DeploymentRecord[] = [];
   for (let i = 0n; i < length; i++) {
@@ -33,6 +40,7 @@ export async function enumerateDeployments(
       abi: factoryAbi,
       functionName: "allDeployments",
       args: [i],
+      ...atBlock,
     });
     deployments.push({ address: deployed, index: Number(i) });
   }
@@ -44,19 +52,23 @@ export async function factoryProvenance(
   client: PublicClient,
   factory: Address,
   hook: Address,
+  blockNumber?: bigint,
 ): Promise<{ isFromFactory: boolean; creationCodeHash: Hex }> {
+  const atBlock = blockNumber !== undefined ? { blockNumber } : {};
   const [isFromFactory, creationCodeHash] = await Promise.all([
     client.readContract({
       address: factory,
       abi: factoryAbi,
       functionName: "isFromFactory",
       args: [hook],
+      ...atBlock,
     }),
     client.readContract({
       address: factory,
       abi: factoryAbi,
       functionName: "creationCodeHashOf",
       args: [hook],
+      ...atBlock,
     }),
   ]);
   return { isFromFactory, creationCodeHash };

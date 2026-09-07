@@ -1,10 +1,7 @@
 import { toHex } from "viem";
 import type { Address, Hex, PublicClient } from "viem";
 import { poolManagerAbi } from "./abis.js";
-import { decodeVanillaLiquidity, poolStateSlot } from "./pool.js";
-
-/** `StateLibrary.LIQUIDITY_OFFSET` — liquidity is word 3 of `Pool.State`. */
-const LIQUIDITY_OFFSET = 3n;
+import { decodeVanillaLiquidity, LIQUIDITY_OFFSET, poolStateSlot } from "./pool.js";
 
 /** Vanilla PoolManager liquidity via `extsload`, same as `StateLibrary.getLiquidity`. */
 export async function readVanillaLiquidity(

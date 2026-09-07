@@ -20,6 +20,12 @@ export const FIXTURE_POOL_ID: Hex = "0xf32349cbc41fec9d3194f2b4e9ee72ded0bfda412
 /** Upstream revision the pinned ABIs were derived from. */
 export const V4_HOOKS_PUBLIC_REVISION = "0f731d5de0f4fd60b506b55754d5e6ff086eab7d";
 
+/** v4-core pin for `POOLS_SLOT` / `LIQUIDITY_OFFSET`. */
+export const V4_CORE_REVISION = "46c6834698c48bc4a463a86d8420f4eb1d7f3b75";
+
+export const IALFHOOK_INTERFACE_ID = "0x7adbfbb8" as Hex;
+export const IHOOKSTATS_INTERFACE_ID = "0x601b90d3" as Hex;
+
 export const UPSTREAM_SOURCE = `https://github.com/Uniswap/v4-hooks-public/tree/${V4_HOOKS_PUBLIC_REVISION}`;
 
 // Verified mainnet facts, pinned 2026-09-07 (evidence and method in docs/pins.md).

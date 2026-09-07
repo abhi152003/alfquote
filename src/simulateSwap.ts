@@ -3,25 +3,66 @@ import type { Address, Hex, PublicClient } from "viem";
 import { universalRouterAbi } from "./abis.js";
 import { UNIVERSAL_ROUTER } from "./addresses.js";
 
-const revertAbi = parseAbi([
+export const REVERT_ERROR_ABI = parseAbi([
   "error V4TooLittleReceived(uint256,uint256)",
   "error AllowanceExpired(uint256)",
   "error InsufficientAllowance(uint256)",
+  "error InsufficientBalance(uint256)",
   "error ExecutionFailed(uint256 commandIndex, bytes message)",
   "error TransactionDeadlinePassed()",
+]);
+
+const CORRECTABLE_ERRORS = new Set([
+  "AllowanceExpired",
+  "InsufficientAllowance",
+  "InsufficientBalance",
 ]);
 
 export interface SimulateSwapResult {
   ok: boolean;
   gas?: bigint;
-  revert?: { shortMessage: string; data?: Hex; correctable: boolean };
+  revert?: { name: string; shortMessage: string; data?: Hex; correctable: boolean };
 }
 
-const CORRECTABLE = /allowance|insufficient|transfer|balance|permit2|expired|STF|TRANSFER_FROM/i;
+export function classifyDecodedError(name: string): boolean {
+  return CORRECTABLE_ERRORS.has(name);
+}
+
+export function decodeRevertData(raw: Hex): { name: string; shortMessage: string; correctable: boolean } {
+  const parsed = decodeErrorResult({ abi: REVERT_ERROR_ABI, data: raw });
+  if (parsed.errorName === "ExecutionFailed") {
+    const inner = parsed.args[1] as Hex;
+    try {
+      const nested = decodeErrorResult({ abi: REVERT_ERROR_ABI, data: inner });
+      return {
+        name: nested.errorName,
+        shortMessage: `ExecutionFailed(${parsed.args[0]}, ${nested.errorName}(${nested.args.map(String).join(", ")}))`,
+        correctable: classifyDecodedError(nested.errorName),
+      };
+    } catch {
+      return {
+        name: "ExecutionFailed",
+        shortMessage: `ExecutionFailed(${parsed.args[0]}, ${inner})`,
+        correctable: false,
+      };
+    }
+  }
+  return {
+    name: parsed.errorName,
+    shortMessage: `${parsed.errorName}(${parsed.args.map(String).join(", ")})`,
+    correctable: classifyDecodedError(parsed.errorName),
+  };
+}
 
 export async function simulateUniversalRouterExecute(
   client: PublicClient,
-  args: { sender: Address; commands: Hex; inputs: readonly Hex[]; deadline: bigint },
+  args: {
+    sender: Address;
+    commands: Hex;
+    inputs: readonly Hex[];
+    deadline: bigint;
+    blockNumber?: bigint;
+  },
 ): Promise<SimulateSwapResult> {
   try {
     const { request } = await client.simulateContract({
@@ -30,41 +71,44 @@ export async function simulateUniversalRouterExecute(
       functionName: "execute",
       args: [args.commands, [...args.inputs], args.deadline],
       account: args.sender,
+      ...(args.blockNumber !== undefined ? { blockNumber: args.blockNumber } : {}),
     });
     const gas = await client.estimateContractGas(request);
     return { ok: true, gas };
   } catch (error) {
-    const revert = decodeRevert(error);
-    return { ok: false, revert };
+    return { ok: false, revert: decodeRevert(error) };
   }
 }
 
-function decodeRevert(error: unknown): SimulateSwapResult["revert"] {
-  const data =
+export function decodeRevert(error: unknown): NonNullable<SimulateSwapResult["revert"]> {
+  const walked =
     error instanceof BaseError
       ? error.walk((err) => err instanceof ContractFunctionRevertedError)
       : undefined;
-  const reverted = data instanceof ContractFunctionRevertedError ? data : undefined;
+  const reverted = walked instanceof ContractFunctionRevertedError ? walked : undefined;
   const shortMessage =
     error instanceof BaseError
       ? error.shortMessage
       : error instanceof Error
         ? error.message
         : String(error);
-  const errorName = reverted?.data && "errorName" in reverted.data ? String(reverted.data.errorName) : undefined;
   const rawData = (reverted?.raw ?? undefined) as Hex | undefined;
-  let decoded = errorName ?? shortMessage;
   if (rawData) {
     try {
-      const parsed = decodeErrorResult({ abi: revertAbi, data: rawData });
-      decoded = `${parsed.errorName}(${parsed.args.map(String).join(", ")})`;
+      const decoded = decodeRevertData(rawData);
+      return { ...decoded, data: rawData };
     } catch {
-      decoded = `${decoded} raw=${rawData.slice(0, 74)}`;
+      return {
+        name: "Unknown",
+        shortMessage: shortMessage.slice(0, 400),
+        data: rawData,
+        correctable: false,
+      };
     }
   }
   return {
-    shortMessage: decoded.slice(0, 400),
-    data: rawData,
-    correctable: CORRECTABLE.test(decoded) || CORRECTABLE.test(shortMessage),
+    name: "Unknown",
+    shortMessage: shortMessage.slice(0, 400),
+    correctable: false,
   };
 }

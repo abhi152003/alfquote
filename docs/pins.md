@@ -14,6 +14,7 @@ mainnet state moves.
 | Pin | Value |
 | --- | --- |
 | `v4-hooks-public` revision | [`0f731d5de0f4fd60b506b55754d5e6ff086eab7d`](https://github.com/Uniswap/v4-hooks-public/tree/0f731d5de0f4fd60b506b55754d5e6ff086eab7d) (2026-08-19) |
+| `v4-core` revision | [`46c6834698c48bc4a463a86d8420f4eb1d7f3b75`](https://github.com/Uniswap/v4-core/tree/46c6834698c48bc4a463a86d8420f4eb1d7f3b75) — `StateLibrary.POOLS_SLOT = 6`, `LIQUIDITY_OFFSET = 3`; slot hash independently matches mainnet `pools[poolId]` used at init block `25540385` |
 | Interfaces pinned | `src/alf/interfaces/IALFHook.sol`, `src/alf/interfaces/IHookStats.sol`, `src/interfaces/IAllowlistedFactory.sol`, `src/alf/DualPoolHook.sol` (`factory()`), `src/alf/base/OwnedALFHook.sol` (`livePools(PoolId)`) |
 | ABI files | `src/abi/*.json` (canonical pins) + `src/abis.ts` (typed runtime view); selector equivalence enforced by `test/abiEquivalence.test.ts` |
 
@@ -194,21 +195,60 @@ Encoded `execute` for one exact-input single-hop DualPool swap. No transaction o
 | Permit2 → UR | amount `0`, expiration `0` (blocker, not bypassed) |
 | Simulation | revert `V4TooLittleReceived(99496371, 72792356)` |
 
-The swap action ran and returned `72792356` USDT raw (~72.79 USDT). That is below a 50 bps bound on the indicative quote, so the min-out protection fired. Quotes are not a firm price.
+The swap action ran and returned `72792356` USDT raw (~72.79 USDT). That is below a 50 bps bound on the indicative quote, so the min-out protection fired.
 
-Follow-up at 3000 bps (min `69997447`): swap min-out passed; `execute` then reverted `AllowanceExpired(0)` on settle — correctable by Permit2 approval, which this work order does not create.
+**Quote vs executable output:** at 100 USDC exact-in, indicative quote ≈ 99.996 USDT and simulated swap output ≈ 72.79 USDT (~27% worse). DualPool `getIndicativeQuote` is a single-step view, not a firm price. Judge-facing claims must not treat the quote as guaranteed fill. This limitation is unresolved at the tested size; it is not a reason to change the selected pool.
+
+**DIAGNOSTIC-ONLY** follow-up at 3000 bps (min `69997447`): swap min-out passed; `execute` then reverted `AllowanceExpired(0)` on settle — correctable by Permit2 approval, which Phase 1 does not create. 3000 bps is **not** a recommended production setting.
 
 No broadcast.
+
+Phase 1 simulation gate uses Universal Router **v2 encoding only**. Alternate UR structs are not used to convert a min-output, allowance, balance, or transfer failure into success.
+
+## Phase 1 re-run (WO-5)
+
+Latest-state re-run after the evidence hardening. Historical birth blocks and the WO-3 proof at `25923945` remain the original pins.
+
+| Command | Latest-state block | Result |
+| --- | --- | --- |
+| `npm run spike` | `25925047` | 16/16 required checks; IHookStats advertisement discrepancy recorded (`IALFHook=true`, `IHookStats=false`) |
+| `npm run proof` | `25925049` (same-block reads) | PROCEED; empty `hookData`; vanilla `L=0`; slot0 populated |
+| `npm run simulate` | quote `25925049`, simulate `25925049` (sequential latest-state, not a single shared block unless equal) | UR v2 only; `V4TooLittleReceived(99496371, 72792714)`; Permit2 blockers reported, not bypassed |
+
+Exact bytes submitted to that simulation (must match `encoding` + `commands` + `inputs` + `deadline`):
+
+| Field | Value |
+| --- | --- |
+| encoding | `v2` |
+| commands | `0x10` |
+| deadline | `1788779507` |
+| sender | `0xF977814e90dA44bFA03b6295A0616a897441aceC` |
+
+```
+inputs=0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000003060c0f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000024000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec7000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000078bd49d5279a99b5f4011a5c61ee8caac000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000005f5e1000000000000000000000000000000000000000000000000000000000005ee31b3000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000000000000000000000000000000000000005f5e1000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec70000000000000000000000000000000000000000000000000000000005ee31b3
+```
+
+```
+calldata=0x3593564c000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000006a9e9bf300000000000000000000000000000000000000000000000000000000000000011000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000340000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000003060c0f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000024000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec7000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000078bd49d5279a99b5f4011a5c61ee8caac000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000005f5e1000000000000000000000000000000000000000000000000000000000005ee31b3000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000000000000000000000000000000000000005f5e1000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec70000000000000000000000000000000000000000000000000000000005ee31b3
+```
+
+Phase 1 decision: **PASS the code/CI release gate**. The protected-swap simulation is recorded as a **min-out revert** at 50 bps (`V4TooLittleReceived`), which is expected given the quote-vs-fill gap. It is not a successful `execute`. Phase 2 must not start until WO-3 is completed in Software Factory and this pin file is committed.
+
+## Phase 1 release gate
+
+Local sequence: `npm ci && npm run type-check && npm run build && npm test && npm run check-no-send`, then with `.env`: `npm run spike`, `npm run proof`, `npm run simulate`.
+
+CI (`.github/workflows/phase1.yml`) runs install, type-check, build, tests, and the no-send grep. It does not use `ETHEREUM_RPC_URL`.
 
 ## Reproduction
 
 ```sh
-npm install
-cp .env.example .env          # set ETHEREUM_RPC_URL to any Ethereum mainnet endpoint
-npm run spike                 # WO-2: factory, provenance, PoolKey pins
-npm run proof                 # WO-3: negative-liquidity proof; exit 0 = PROCEED
-npm run simulate              # WO-4: encode + dry-run Universal Router execute (needs ALFQUOTE_SIMULATION_FROM)
-npm test                      # unit tests incl. ABI selector equivalence + interface ids
+npm ci
+npm run type-check && npm run build && npm test && npm run check-no-send
+cp .env.example .env          # set ETHEREUM_RPC_URL; for simulate also ALFQUOTE_SIMULATION_FROM
+npm run spike
+npm run proof
+npm run simulate
 ```
 
 Notes for reproduction on free-tier endpoints: `eth_getLogs` is capped at
@@ -221,15 +261,10 @@ mainnet endpoint without archive access.
 ## Caveats
 
 - `IHookStats` (`0x601b90d3`) is **not** advertised by either the
-  factory-attested hook or the fixture hook at block `25920319`, even though
-  both advertise `IALFHook` (`0x7adbfbb8`). The pinned upstream `IALFHook`
-  inherits `IHookStats`, so the deployed hooks predate or diverge from that
-  revision. Consequence for WO-3: `getReserves`/`getEffectiveLiquidity` calls
-  must be attempted defensively (call and decode, do not trust
-  `supportsInterface` alone), and failure must be reported, not guessed around.
-- The `ALFHookData` struct convention (`hookData = abi.encode(ALFHookData(""))`
-  or empty bytes) comes from the pinned interface source; the deployed hooks
-  accepted an empty-`hookData` world before that revision. WO-3/WO-4 must test
-  both encodings against the live hooks.
+  factory-attested hook or the fixture hook, even though both advertise
+  `IALFHook` (`0x7adbfbb8`). Stats views are called directly. ERC-165 is not
+  used as a substitute for those results.
+- Phase 1 quotes and swaps use **empty DualPool `hookData` only**. Encoded
+  `ALFHookData` is diagnostic-only and cannot pass the quote gate.
 - Registry membership and liveness change; re-run the spike before relying on
   any value here.

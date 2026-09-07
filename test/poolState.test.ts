@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { poolStateSlot, decodeVanillaLiquidity } from "../src/pool.js";
-import { FIXTURE_POOL_ID } from "../src/addresses.js";
+import { poolStateSlot, decodeVanillaLiquidity, POOLS_SLOT, LIQUIDITY_OFFSET } from "../src/pool.js";
+import { FIXTURE_POOL_ID, V4_CORE_REVISION } from "../src/addresses.js";
 
 describe("poolStateSlot", () => {
-  it("matches the precomputed keccak256(abi.encode(poolId, 6)) vector", () => {
-    // keccak256(abi.encode(poolId, uint256(6)))
+  it("matches the precomputed keccak256(abi.encode(poolId, POOLS_SLOT)) vector", () => {
+    expect(POOLS_SLOT).toBe(6n);
+    expect(LIQUIDITY_OFFSET).toBe(3n);
+    expect(V4_CORE_REVISION).toBe("46c6834698c48bc4a463a86d8420f4eb1d7f3b75");
     expect(poolStateSlot(FIXTURE_POOL_ID)).toBe(
       "0x33d45d331c8969f95aa10e26be8f4e03dde8dc8dc754fc95e7d1dc227d50a7d8",
     );

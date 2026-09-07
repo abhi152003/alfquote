@@ -10,6 +10,8 @@ export {
   derivePoolId,
   poolStateSlot,
   decodeVanillaLiquidity,
+  POOLS_SLOT,
+  LIQUIDITY_OFFSET,
   type PoolKey,
 } from "./pool.js";
 export { readVanillaLiquidity } from "./poolState.js";
@@ -19,6 +21,7 @@ export {
   readMaxGas,
   readHookStats,
   getIndicativeQuoteSafe,
+  getIndicativeQuoteEncodedDiagnostic,
   type HookStatsResult,
   type IndicativeQuoteResult,
 } from "./alfQuote.js";
@@ -39,6 +42,9 @@ export {
   FIXTURE_HOOK,
   FIXTURE_POOL_ID,
   V4_HOOKS_PUBLIC_REVISION,
+  V4_CORE_REVISION,
+  IALFHOOK_INTERFACE_ID,
+  IHOOKSTATS_INTERFACE_ID,
   UPSTREAM_SOURCE,
   USDC,
   USDT,
@@ -54,8 +60,15 @@ export {
   amountOutMinimumFromQuote,
   encodeV4ExactInSingleExecute,
   encodeExecuteCalldata,
+  decodeV4ExactInSingleCalldata,
   type EncodedExecute,
   type UrEncoding,
+  type DecodedV4ExactInSingle,
 } from "./v4Swap.js";
 export { readSwapAllowances, allowanceBlockers, type AllowanceSnapshot } from "./allowances.js";
-export { simulateUniversalRouterExecute, type SimulateSwapResult } from "./simulateSwap.js";
+export {
+  simulateUniversalRouterExecute,
+  decodeRevertData,
+  classifyDecodedError,
+  type SimulateSwapResult,
+} from "./simulateSwap.js";

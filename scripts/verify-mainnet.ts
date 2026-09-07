@@ -22,6 +22,8 @@ import {
   FIXTURE_HOOK,
   FIXTURE_POOL_ID,
   PINNED_POOL_KEY,
+  IALFHOOK_INTERFACE_ID,
+  IHOOKSTATS_INTERFACE_ID,
   DEMO_POOL_INIT,
   POOL_MANAGER_BIRTH_BLOCK,
   FACTORY_BIRTH_BLOCK,
@@ -63,7 +65,8 @@ async function main(): Promise<void> {
   // createMainnetClient aborts on wrong chains before any read: evidence must be mainnet.
   const client = await createMainnetClient(config);
   const head = await client.getBlockNumber();
-  console.log(`Connected: chain id 1, head block ${head}`);
+  console.log(`Connected: chain id 1, latest-state head block ${head}`);
+  console.log("Live reads below are latest-state at that head unless labeled historical.");
   console.log();
 
   // The known IERC-165 constant guards the XOR-fold against silent breakage.
@@ -74,12 +77,18 @@ async function main(): Promise<void> {
   }
   const IALFHOOK_ID = interfaceIdOf(alfHookAbi);
   const IHOOKSTATS_ID = interfaceIdOf(hookStatsAbi);
-  console.log(`Interface ids (from pinned ABIs): IALFHook=${IALFHOOK_ID} IHookStats=${IHOOKSTATS_ID}`);
+  if (IALFHOOK_ID !== IALFHOOK_INTERFACE_ID || IHOOKSTATS_ID !== IHOOKSTATS_INTERFACE_ID) {
+    console.error(
+      `Interface id mismatch: computed IALFHook=${IALFHOOK_ID} IHookStats=${IHOOKSTATS_ID}, pinned ${IALFHOOK_INTERFACE_ID} ${IHOOKSTATS_INTERFACE_ID}`,
+    );
+    process.exit(1);
+  }
+  console.log(`Interface ids (pinned): IALFHook=${IALFHOOK_ID} IHookStats=${IHOOKSTATS_ID}`);
   console.log();
   console.log("Verification results (streamed):");
 
   // --- Documented targets have bytecode (direct reads) -----------------------
-  const factoryCode = await hasBytecode(client, ALLOWLISTED_FACTORY);
+  const factoryCode = await hasBytecode(client, ALLOWLISTED_FACTORY, head);
   check(
     "factory bytecode",
     factoryCode.present ? "pass" : "fail",
@@ -88,7 +97,7 @@ async function main(): Promise<void> {
       : `${ALLOWLISTED_FACTORY} has no runtime bytecode`,
   );
 
-  const pmCode = await hasBytecode(client, POOL_MANAGER);
+  const pmCode = await hasBytecode(client, POOL_MANAGER, head);
   check(
     "PoolManager bytecode",
     pmCode.present ? "pass" : "fail",
@@ -106,7 +115,7 @@ async function main(): Promise<void> {
   // --- Factory enumeration + pinned-snapshot integrity ------------------------
   let deployments: Awaited<ReturnType<typeof enumerateDeployments>> = [];
   try {
-    deployments = await enumerateDeployments(client, ALLOWLISTED_FACTORY);
+    deployments = await enumerateDeployments(client, ALLOWLISTED_FACTORY, head);
     check(
       "factory enumeration",
       "info",
@@ -131,7 +140,7 @@ async function main(): Promise<void> {
   let selectedLabel = "fixture";
   for (const deployment of deployments) {
     try {
-      if (await supportsInterface(client, deployment.address, IALFHOOK_ID)) {
+      if (await supportsInterface(client, deployment.address, IALFHOOK_ID, head)) {
         selectedHook = deployment.address;
         selectedLabel = "factory-attested";
         check(
@@ -154,14 +163,14 @@ async function main(): Promise<void> {
   }
 
   // --- Two-way provenance -----------------------------------------------------
-  const forward = await factoryProvenance(client, ALLOWLISTED_FACTORY, selectedHook);
+  const forward = await factoryProvenance(client, ALLOWLISTED_FACTORY, selectedHook, head);
   check(
     "isFromFactory(selected hook)",
     "info",
     `${forward.isFromFactory} (creationCodeHash ${forward.creationCodeHash}) — provenance label only, never operator/vault/routing/liveness safety`,
   );
 
-  const reverse = await reverseProvenance(client, selectedHook, ALLOWLISTED_FACTORY);
+  const reverse = await reverseProvenance(client, selectedHook, ALLOWLISTED_FACTORY, head);
   check(
     "hook.factory()",
     "info",
@@ -169,29 +178,29 @@ async function main(): Promise<void> {
   );
 
   // --- ERC-165 compatibility on the selected hook -----------------------------
-  const supportsErc165 = await supportsInterface(client, selectedHook, IERC165_ID);
-  check("ERC-165 base", supportsErc165 ? "pass" : "fail", `supportsInterface(${IERC165_ID}) = ${supportsErc165}`);
+  const supportsErc165 = await supportsInterface(client, selectedHook, IERC165_ID, head);
+  check("ERC-165 base", supportsErc165 ? "pass" : "fail", `supportsInterface(${IERC165_ID}) = ${supportsErc165} (latest-state ${head})`);
 
-  const supportsAlf = await supportsInterface(client, selectedHook, IALFHOOK_ID);
+  const supportsAlf = await supportsInterface(client, selectedHook, IALFHOOK_ID, head);
   check(
     "IALFHook compatibility",
     supportsAlf ? "pass" : "fail",
-    `supportsInterface(${IALFHOOK_ID}) = ${supportsAlf}`,
+    `supportsInterface(${IALFHOOK_ID}) = ${supportsAlf} (latest-state ${head})`,
   );
 
-  const supportsStats = await supportsInterface(client, selectedHook, IHOOKSTATS_ID);
+  const supportsStats = await supportsInterface(client, selectedHook, IHOOKSTATS_ID, head);
   check(
-    "IHookStats compatibility",
-    supportsStats ? "pass" : "info",
-    `supportsInterface(${IHOOKSTATS_ID}) = ${supportsStats}`,
+    "IHookStats advertisement discrepancy",
+    supportsAlf && !supportsStats ? "pass" : supportsStats ? "info" : "fail",
+    `IALFHook=${supportsAlf} IHookStats=${supportsStats} — stats views are still called directly; ERC-165 is not used as a substitute`,
   );
 
   // Fixture-hook ERC-165 status (the demo pool's hook; WO-3 quote targets it)
   if (selectedHook !== FIXTURE_HOOK) {
     const [fxErc165, fxAlf, fxStats] = await Promise.all([
-      supportsInterface(client, FIXTURE_HOOK, IERC165_ID),
-      supportsInterface(client, FIXTURE_HOOK, IALFHOOK_ID),
-      supportsInterface(client, FIXTURE_HOOK, IHOOKSTATS_ID),
+      supportsInterface(client, FIXTURE_HOOK, IERC165_ID, head),
+      supportsInterface(client, FIXTURE_HOOK, IALFHOOK_ID, head),
+      supportsInterface(client, FIXTURE_HOOK, IHOOKSTATS_ID, head),
     ]);
     check("fixture ERC-165 base", fxErc165 ? "pass" : "fail", `supportsInterface(${IERC165_ID}) = ${fxErc165}`);
     check(
@@ -200,9 +209,9 @@ async function main(): Promise<void> {
       `supportsInterface(${IALFHOOK_ID}) = ${fxAlf}`,
     );
     check(
-      "fixture IHookStats compatibility",
-      fxStats ? "pass" : "info",
-      `supportsInterface(${IHOOKSTATS_ID}) = ${fxStats}`,
+      "fixture IHookStats advertisement discrepancy",
+      fxAlf && !fxStats ? "pass" : fxStats ? "info" : "fail",
+      `IALFHook=${fxAlf} IHookStats=${fxStats} (latest-state ${head})`,
     );
   }
 

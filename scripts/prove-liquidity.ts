@@ -68,6 +68,9 @@ async function run(): Promise<void> {
   console.log("Capacity signals (distinct labels, same block):");
   const slot0Populated = BigInt(vanilla.slot0Word) !== 0n;
   console.log(`  [1] PoolManager vanilla liquidity: ${vanilla.liquidity} (persistent v4 liquidity units; slot0 word ${vanilla.slot0Word.slice(0, 26)}… populated=${slot0Populated})`);
+  if (!slot0Populated) {
+    blockers.push("pool slot0 is uninitialized/empty — blocking proof result");
+  }
 
   let liveness: Awaited<ReturnType<typeof readLiveness>> | null = null;
   try {
@@ -118,9 +121,13 @@ async function run(): Promise<void> {
       maxGas,
       block,
     );
+    if (quote.hookDataEncoding !== "empty") {
+      console.log(`  getIndicativeQuote did not use empty hookData (${quote.hookDataEncoding}) — Phase 1 gate fail`);
+      blockers.push("indicative quote did not use empty DualPool hookData");
+    }
     if (quote.outputAmount === null) {
-      console.log(`  getIndicativeQuote failed with both hookData encodings: ${redactKeys(quote.error ?? "")}`);
-      blockers.push("indicative quote call failed (both hookData encodings)");
+      console.log(`  getIndicativeQuote failed with empty hookData: ${redactKeys(quote.error ?? "")}`);
+      blockers.push("indicative quote call failed (empty hookData)");
     } else if (quote.outputAmount === 0n) {
       console.log(`  getIndicativeQuote returned 0 — skip, not success`);
       blockers.push("indicative quote is zero");
@@ -134,7 +141,11 @@ async function run(): Promise<void> {
   const effectivePositive =
     stats.effectiveLiquidity !== null &&
     (stats.effectiveLiquidity[0] > 0n || stats.effectiveLiquidity[1] > 0n);
-  const quotePositive = quote !== null && quote.outputAmount !== null && quote.outputAmount > 0n;
+  const quotePositive =
+    quote !== null &&
+    quote.hookDataEncoding === "empty" &&
+    quote.outputAmount !== null &&
+    quote.outputAmount > 0n;
   const nearZeroVanilla = vanilla.liquidity <= 10n;
   const quoteAttempted = maxGas !== null && poolIsLive;
   const quoteCallFailed =
@@ -149,6 +160,7 @@ async function run(): Promise<void> {
     effectiveLiquidity: stats.effectiveLiquidity,
     quoteCallFailed,
     quoteOutput: quote?.outputAmount ?? null,
+    slot0Populated,
   });
 
   console.log();

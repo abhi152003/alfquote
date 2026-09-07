@@ -32,8 +32,11 @@ cp .env.example .env   # then set ETHEREUM_RPC_URL; for simulate also set ALFQUO
 | `npm run spike` | Run the mainnet verification spike (`scripts/verify-mainnet.ts`) |
 | `npm run proof` | Run the negative-liquidity proof (`scripts/prove-liquidity.ts`) |
 | `npm run simulate` | Encode and dry-run a Universal Router DualPool swap (`scripts/simulate-swap.ts`) |
+| `npm run check-no-send` | Fail if src/scripts contain broadcast or signer APIs |
 
 The spike fails closed: it exits non-zero with an actionable message when `ETHEREUM_RPC_URL` is missing or invalid.
+
+CI runs `npm ci`, type-check, build, tests, and a no-send grep. It does not use an RPC secret.
 
 Verified mainnet facts — addresses, deployment blocks, factory registry, interface ids, the demo pool's exact PoolKey, the negative-liquidity proof, and the Universal Router dry-run — are pinned with reproduction commands in [docs/pins.md](docs/pins.md).
 

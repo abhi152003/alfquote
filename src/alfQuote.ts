@@ -89,7 +89,32 @@ export interface IndicativeQuoteResult {
   error?: string;
 }
 
-/** `getIndicativeQuote` with `gas` cap; empty `hookData` first, then encoded `ALFHookData`. */
+async function callIndicativeQuote(
+  client: PublicClient,
+  hook: Address,
+  key: PoolKey,
+  params: { zeroForOne: boolean; amountSpecified: bigint },
+  gas: bigint,
+  blockNumber: bigint,
+  hookData: Hex,
+): Promise<bigint> {
+  const data = encodeFunctionData({
+    abi: alfHookAbi,
+    functionName: "getIndicativeQuote",
+    args: [key, params.zeroForOne, params.amountSpecified, hookData],
+  });
+  const result = await client.call({ to: hook, data, gas, blockNumber });
+  if (result.data === undefined) {
+    throw new Error("eth_call returned no data");
+  }
+  return decodeFunctionResult({
+    abi: alfHookAbi,
+    functionName: "getIndicativeQuote",
+    data: result.data,
+  });
+}
+
+/** Phase 1 quote: empty `hookData` only. */
 export async function getIndicativeQuoteSafe(
   client: PublicClient,
   hook: Address,
@@ -98,7 +123,29 @@ export async function getIndicativeQuoteSafe(
   gas: bigint,
   blockNumber: bigint,
 ): Promise<IndicativeQuoteResult> {
-  const emptyBytes: `0x${string}` = "0x";
+  try {
+    return {
+      outputAmount: await callIndicativeQuote(client, hook, key, params, gas, blockNumber, "0x"),
+      hookDataEncoding: "empty",
+    };
+  } catch (emptyError) {
+    return {
+      outputAmount: null,
+      hookDataEncoding: "none",
+      error: `empty hookData: ${emptyError instanceof Error ? emptyError.message.slice(0, 200) : String(emptyError).slice(0, 200)}`,
+    };
+  }
+}
+
+/** Diagnostic encoded `ALFHookData`; not a Phase 1 pass path. */
+export async function getIndicativeQuoteEncodedDiagnostic(
+  client: PublicClient,
+  hook: Address,
+  key: PoolKey,
+  params: { zeroForOne: boolean; amountSpecified: bigint },
+  gas: bigint,
+  blockNumber: bigint,
+): Promise<IndicativeQuoteResult> {
   const encodedHookData = encodeAbiParameters(
     [
       {
@@ -107,42 +154,26 @@ export async function getIndicativeQuoteSafe(
         components: [{ name: "attestationData", type: "bytes" }],
       },
     ],
-    [{ attestationData: emptyBytes }],
+    [{ attestationData: "0x" }],
   );
-
-  const call = async (hookData: Hex) => {
-    const data = encodeFunctionData({
-      abi: alfHookAbi,
-      functionName: "getIndicativeQuote",
-      args: [key, params.zeroForOne, params.amountSpecified, hookData],
-    });
-    const result = await client.call({ to: hook, data, gas, blockNumber });
-    if (result.data === undefined) {
-      throw new Error("eth_call returned no data");
-    }
-    return decodeFunctionResult({
-      abi: alfHookAbi,
-      functionName: "getIndicativeQuote",
-      data: result.data,
-    });
-  };
-
   try {
-    return { outputAmount: await call(emptyBytes), hookDataEncoding: "empty" };
-  } catch (emptyError) {
-    try {
-      return {
-        outputAmount: await call(encodedHookData),
-        hookDataEncoding: "encoded-ALFHookData",
-      };
-    } catch (encodedError) {
-      return {
-        outputAmount: null,
-        hookDataEncoding: "none",
-        error:
-          `empty hookData: ${emptyError instanceof Error ? emptyError.message.slice(0, 200) : String(emptyError).slice(0, 200)}; ` +
-          `encoded ALFHookData: ${encodedError instanceof Error ? encodedError.message.slice(0, 200) : String(encodedError).slice(0, 200)}`,
-      };
-    }
+    return {
+      outputAmount: await callIndicativeQuote(
+        client,
+        hook,
+        key,
+        params,
+        gas,
+        blockNumber,
+        encodedHookData,
+      ),
+      hookDataEncoding: "encoded-ALFHookData",
+    };
+  } catch (error) {
+    return {
+      outputAmount: null,
+      hookDataEncoding: "none",
+      error: error instanceof Error ? error.message.slice(0, 200) : String(error).slice(0, 200),
+    };
   }
 }

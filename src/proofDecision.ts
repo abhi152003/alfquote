@@ -7,13 +7,15 @@ export interface ProofSignals {
   maxGasReadOk: boolean;
   reservesReadOk: boolean;
   effectiveLiquidity: readonly [bigint, bigint] | null;
-  /** Quote was attempted and both `hookData` encodings failed. */
+  /** Quote was attempted and empty `hookData` failed. */
   quoteCallFailed: boolean;
   /** Quote output, or null if skipped/failed. */
   quoteOutput: bigint | null;
+  /** PoolManager slot0 word is non-zero (pool initialized). */
+  slot0Populated: boolean;
 }
 
-/** REVISE on failed reads; STOP if not live or no capacity/quote; PROCEED only if live + positive effective + positive quote. */
+/** REVISE on failed reads; STOP if not live, empty slot0, or no quote/capacity. */
 export function decideProof(signals: ProofSignals): ProofDecision {
   if (
     !signals.livenessReadOk ||
@@ -29,6 +31,7 @@ export function decideProof(signals: ProofSignals): ProofDecision {
   const effectivePositive =
     signals.effectiveLiquidity[0] > 0n || signals.effectiveLiquidity[1] > 0n;
   const quotePositive = signals.quoteOutput !== null && signals.quoteOutput > 0n;
+  if (!signals.slot0Populated) return "STOP";
   if (live && effectivePositive && quotePositive) return "PROCEED";
   return "STOP";
 }

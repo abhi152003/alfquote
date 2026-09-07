@@ -25,7 +25,13 @@ export function derivePoolId(key: PoolKey): Hex {
   return keccak256(encoded);
 }
 
-/** `pools[poolId]` slot: `keccak256(abi.encode(poolId, 6))`. */
+/** `StateLibrary.POOLS_SLOT` in v4-core (`src/libraries/StateLibrary.sol`). */
+export const POOLS_SLOT = 6n;
+
+/** `StateLibrary.LIQUIDITY_OFFSET` — liquidity is word 3 of `Pool.State`. */
+export const LIQUIDITY_OFFSET = 3n;
+
+/** `pools[poolId]` slot: `keccak256(abi.encode(poolId, POOLS_SLOT))`. */
 export function poolStateSlot(poolId: Hex): Hex {
   return keccak256(
     encodeAbiParameters(
@@ -33,7 +39,7 @@ export function poolStateSlot(poolId: Hex): Hex {
         { name: "poolId", type: "bytes32" },
         { name: "poolsSlot", type: "uint256" },
       ],
-      [poolId, 6n],
+      [poolId, POOLS_SLOT],
     ),
   );
 }

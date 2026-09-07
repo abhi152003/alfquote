@@ -11,7 +11,6 @@ import {
   getIndicativeQuoteSafe,
   amountOutMinimumFromQuote,
   encodeV4ExactInSingleExecute,
-  encodeExecuteCalldata,
   readSwapAllowances,
   allowanceBlockers,
   simulateUniversalRouterExecute,
@@ -82,6 +81,10 @@ async function run(): Promise<void> {
   console.log(`  hookData encoding: ${quote.hookDataEncoding}`);
   console.log();
 
+  if (slippageBps !== DEFAULT_SLIPPAGE_BPS) {
+    console.log(`DIAGNOSTIC-ONLY slippage ${slippageBps} bps (Phase 1 gate uses ${DEFAULT_SLIPPAGE_BPS} bps; this is not a recommended setting).`);
+  }
+
   const encoded = encodeV4ExactInSingleExecute(
     {
       poolKey: key,
@@ -92,7 +95,7 @@ async function run(): Promise<void> {
     },
     "v2",
   );
-  console.log(`Encoded ${encoded.encoding}: commands=${encoded.commands} actions=${encoded.actions}`);
+  console.log(`Phase 1 encoding ${encoded.encoding}: commands=${encoded.commands} actions=${encoded.actions}`);
   console.log(`  PoolManager ${POOL_MANAGER}`);
   console.log(`  Universal Router ${UNIVERSAL_ROUTER}`);
   console.log(`  Permit2 ${PERMIT2}`);
@@ -130,38 +133,24 @@ async function run(): Promise<void> {
   }
 
   const deadline = now + 600n;
-  const calldata = encodeExecuteCalldata(encoded.commands, encoded.inputs, deadline);
-  console.log();
-  console.log(`Simulating execute from ${sender} deadline=${deadline}`);
-  let result = await simulateUniversalRouterExecute(client, {
-    sender,
-    commands: encoded.commands,
-    inputs: encoded.inputs,
+  const simulated = encodeV4ExactInSingleExecute(
+    { poolKey: key, zeroForOne: true, amountIn, amountOutMinimum, hookData: "0x" },
+    "v2",
     deadline,
+  );
+  const calldata = simulated.calldata;
+  console.log();
+  console.log(`Simulating v2 execute from ${sender} at latest-state block ${simBlock}`);
+  console.log(`  encoding=${simulated.encoding} commands=${simulated.commands} deadline=${deadline}`);
+  console.log(`  inputs=${simulated.inputs.join(",")}`);
+  console.log(`  calldata=${calldata}`);
+  const result = await simulateUniversalRouterExecute(client, {
+    sender,
+    commands: simulated.commands,
+    inputs: simulated.inputs,
+    deadline,
+    blockNumber: simBlock,
   });
-
-  let encoding = encoded.encoding;
-  if (!result.ok) {
-    const retry = encodeV4ExactInSingleExecute(
-      { poolKey: key, zeroForOne: true, amountIn, amountOutMinimum, hookData: "0x" },
-      "v2.1.1",
-      deadline,
-    );
-    const retryResult = await simulateUniversalRouterExecute(client, {
-      sender,
-      commands: retry.commands,
-      inputs: retry.inputs,
-      deadline,
-    });
-    if (retryResult.ok) {
-      result = retryResult;
-      encoding = "v2.1.1";
-      console.log("v2 encoding reverted; v2.1.1 (minHopPriceX36=0) simulated successfully.");
-    }
-  }
-
-  console.log(`  encoding used: ${encoding}`);
-  console.log(`  calldata: ${calldata}`);
   if (result.ok) {
     console.log(`  SUCCESS gas=${result.gas}`);
     console.log(`Record quote block ${quoteBlock}, simulation block ${simBlock}, gas, and calldata in docs/pins.md.`);

@@ -9,6 +9,7 @@ import {
   TAKE_ALL,
   V4_SWAP_COMMAND,
   amountOutMinimumFromQuote,
+  decodeV4ExactInSingleCalldata,
   encodeV4ExactInSingleExecute,
 } from "../src/v4Swap.js";
 
@@ -53,5 +54,18 @@ describe("encodeV4ExactInSingleExecute", () => {
   it("pins the fixture pool currencies on the swap", () => {
     expect(PINNED_POOL_KEY.currency0).toBe(USDC);
     expect(PINNED_POOL_KEY.currency1).toBe(USDT);
+  });
+
+  it("decodes nested V4_SWAP input fields", () => {
+    const inner = decodeV4ExactInSingleCalldata(encoded.calldata);
+    expect(inner.commands).toBe("0x10");
+    expect(inner.actions).toBe("0x060c0f");
+    expect(inner.poolKey).toEqual(PINNED_POOL_KEY);
+    expect(inner.zeroForOne).toBe(true);
+    expect(inner.amountIn).toBe(100_000_000n);
+    expect(inner.amountOutMinimum).toBe(99_000_000n);
+    expect(inner.hookData).toBe("0x");
+    expect(inner.settle).toEqual({ currency: USDC, amount: 100_000_000n });
+    expect(inner.take).toEqual({ currency: USDT, amount: 99_000_000n });
   });
 });

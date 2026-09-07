@@ -10,11 +10,13 @@ export async function reverseProvenance(
   client: PublicClient,
   hook: Address,
   expectedFactory: Address,
+  blockNumber?: bigint,
 ): Promise<{ reported: Address; matches: boolean }> {
   const reported = await client.readContract({
     address: hook,
     abi: dualPoolHookViewsAbi,
     functionName: "factory",
+    ...(blockNumber !== undefined ? { blockNumber } : {}),
   });
   return { reported, matches: reported.toLowerCase() === expectedFactory.toLowerCase() };
 }
@@ -23,11 +25,13 @@ export async function supportsInterface(
   client: PublicClient,
   hook: Address,
   interfaceId: Hex,
+  blockNumber?: bigint,
 ): Promise<boolean> {
   return client.readContract({
     address: hook,
     abi: erc165Abi,
     functionName: "supportsInterface",
     args: [interfaceId],
+    ...(blockNumber !== undefined ? { blockNumber } : {}),
   });
 }

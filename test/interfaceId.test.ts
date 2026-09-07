@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Abi } from "viem";
 import { interfaceIdOf } from "../src/interfaceId.js";
+import { IALFHOOK_INTERFACE_ID, IHOOKSTATS_INTERFACE_ID } from "../src/addresses.js";
 import erc165Json from "../src/abi/IERC165.json" with { type: "json" };
 import alfHookJson from "../src/abi/IALFHook.json" with { type: "json" };
 import hookStatsJson from "../src/abi/IHookStats.json" with { type: "json" };
@@ -16,11 +17,11 @@ describe("interfaceIdOf", () => {
     expect(interfaceIdOf(asAbi(erc165Json))).toBe("0x01ffc9a7");
   });
 
-  it("computes stable 4-byte ids for the pinned interfaces", () => {
-    for (const json of [alfHookJson, hookStatsJson]) {
-      const id = interfaceIdOf(asAbi(json));
-      expect(id).toMatch(/^0x[0-9a-f]{8}$/);
-    }
+  it("pins IALFHook and IHookStats interface ids", () => {
+    expect(interfaceIdOf(asAbi(alfHookJson))).toBe(IALFHOOK_INTERFACE_ID);
+    expect(interfaceIdOf(asAbi(hookStatsJson))).toBe(IHOOKSTATS_INTERFACE_ID);
+    expect(IALFHOOK_INTERFACE_ID).toBe("0x7adbfbb8");
+    expect(IHOOKSTATS_INTERFACE_ID).toBe("0x601b90d3");
   });
 });
 

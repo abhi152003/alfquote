@@ -1,4 +1,4 @@
-import { concatHex, encodeAbiParameters, encodeFunctionData } from "viem";
+import { concatHex, decodeAbiParameters, decodeFunctionData, encodeAbiParameters, encodeFunctionData } from "viem";
 import type { Address, Hex } from "viem";
 import { universalRouterAbi } from "./abis.js";
 import type { PoolKey } from "./pool.js";
@@ -153,5 +153,69 @@ export function encodeV4ExactInSingleExecute(
     inputs: [v4Input],
     actions,
     calldata: encodeExecuteCalldata(commands, [v4Input], deadline),
+  };
+}
+
+export interface DecodedV4ExactInSingle {
+  commands: Hex;
+  deadline: bigint;
+  actions: Hex;
+  poolKey: PoolKey;
+  zeroForOne: boolean;
+  amountIn: bigint;
+  amountOutMinimum: bigint;
+  hookData: Hex;
+  settle: { currency: Address; amount: bigint };
+  take: { currency: Address; amount: bigint };
+}
+
+const V4_INPUT_ABI = [
+  { name: "actions", type: "bytes" },
+  { name: "params", type: "bytes[]" },
+] as const;
+
+export function decodeV4ExactInSingleCalldata(calldata: Hex): DecodedV4ExactInSingle {
+  const decoded = decodeFunctionData({ abi: universalRouterAbi, data: calldata });
+  if (decoded.functionName !== "execute") {
+    throw new Error(`expected execute, got ${decoded.functionName}`);
+  }
+  const [commands, inputs, deadline] = decoded.args;
+  const input = inputs[0];
+  if (input === undefined) {
+    throw new Error("missing V4_SWAP input");
+  }
+  const [actions, params] = decodeAbiParameters(V4_INPUT_ABI, input);
+  const swap = decodeAbiParameters(EXACT_IN_SINGLE_V2, params[0] ?? "0x")[0];
+  const settle = decodeAbiParameters(
+    [
+      { name: "currency", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    params[1] ?? "0x",
+  );
+  const take = decodeAbiParameters(
+    [
+      { name: "currency", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    params[2] ?? "0x",
+  );
+  return {
+    commands,
+    deadline,
+    actions,
+    poolKey: {
+      currency0: swap.poolKey.currency0,
+      currency1: swap.poolKey.currency1,
+      fee: Number(swap.poolKey.fee),
+      tickSpacing: Number(swap.poolKey.tickSpacing),
+      hooks: swap.poolKey.hooks,
+    },
+    zeroForOne: swap.zeroForOne,
+    amountIn: swap.amountIn,
+    amountOutMinimum: swap.amountOutMinimum,
+    hookData: swap.hookData,
+    settle: { currency: settle[0], amount: settle[1] },
+    take: { currency: take[0], amount: take[1] },
   };
 }

@@ -10,6 +10,7 @@ const livePositive: ProofSignals = {
   effectiveLiquidity: [1n, 1n],
   quoteCallFailed: false,
   quoteOutput: 1n,
+  slot0Populated: true,
 };
 
 describe("decideProof", () => {
@@ -41,5 +42,9 @@ describe("decideProof", () => {
   it("STOP on zero quote or zero effective liquidity", () => {
     expect(decideProof({ ...livePositive, quoteOutput: 0n })).toBe("STOP");
     expect(decideProof({ ...livePositive, effectiveLiquidity: [0n, 0n] })).toBe("STOP");
+  });
+
+  it("STOP when slot0 is uninitialized", () => {
+    expect(decideProof({ ...livePositive, slot0Populated: false })).toBe("STOP");
   });
 });
