@@ -6,6 +6,11 @@ export const ALLOWLISTED_FACTORY: Address = "0x0000000000077769C332e0D3ed8bC8E02
 
 export const POOL_MANAGER: Address = "0x000000000004444c5dc75cB358380D2e3dE08A90";
 
+/** Universal Router v2; swap encoding has no `minHopPriceX36`. */
+export const UNIVERSAL_ROUTER: Address = "0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af";
+
+export const PERMIT2: Address = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
+
 /** Pre-factory example hook; always labeled `fixture`, never factory-attested. */
 export const FIXTURE_HOOK: Address = "0x00000078BD49D5279a99b5F4011a5C61eE8caaC0";
 

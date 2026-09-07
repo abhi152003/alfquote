@@ -9,6 +9,9 @@ import {
   dualPoolHookViewsAbi,
   poolManagerAbi,
   erc20MetadataAbi,
+  erc20Abi,
+  permit2Abi,
+  universalRouterAbi,
 } from "../src/abis.js";
 import erc165Json from "../src/abi/IERC165.json" with { type: "json" };
 import hookStatsJson from "../src/abi/IHookStats.json" with { type: "json" };
@@ -17,6 +20,9 @@ import factoryJson from "../src/abi/IAllowlistedFactory.json" with { type: "json
 import hookViewsJson from "../src/abi/DualPoolHookViews.json" with { type: "json" };
 import poolManagerJson from "../src/abi/IPoolManager.json" with { type: "json" };
 import erc20Json from "../src/abi/IERC20Metadata.json" with { type: "json" };
+import erc20TokenJson from "../src/abi/IERC20.json" with { type: "json" };
+import permit2Json from "../src/abi/IPermit2.json" with { type: "json" };
+import urJson from "../src/abi/IUniversalRouter.json" with { type: "json" };
 
 /**
  * The JSON files are the canonical ABI pins; src/abis.ts is the typed runtime
@@ -31,6 +37,9 @@ const pairs: Array<[name: string, typed: Abi, json: unknown]> = [
   ["DualPoolHookViews", dualPoolHookViewsAbi, hookViewsJson],
   ["IPoolManager", poolManagerAbi, poolManagerJson],
   ["IERC20Metadata", erc20MetadataAbi, erc20Json],
+  ["IERC20", erc20Abi, erc20TokenJson],
+  ["IPermit2", permit2Abi, permit2Json],
+  ["IUniversalRouter", universalRouterAbi, urJson],
 ];
 
 describe("JSON pins match the typed runtime ABIs", () => {

@@ -18,7 +18,7 @@ Requirements: Node.js >= 22.9 and npm. From a clean checkout:
 
 ```sh
 npm install
-cp .env.example .env   # then set ETHEREUM_RPC_URL to a mainnet RPC endpoint
+cp .env.example .env   # then set ETHEREUM_RPC_URL; for simulate also set ALFQUOTE_SIMULATION_FROM
 ```
 
 `ETHEREUM_RPC_URL` must be an http(s) or ws(s) endpoint. `.env` is git-ignored; never commit RPC keys.
@@ -31,10 +31,11 @@ cp .env.example .env   # then set ETHEREUM_RPC_URL to a mainnet RPC endpoint
 | `npm test` | Run unit tests (Vitest) |
 | `npm run spike` | Run the mainnet verification spike (`scripts/verify-mainnet.ts`) |
 | `npm run proof` | Run the negative-liquidity proof (`scripts/prove-liquidity.ts`) |
+| `npm run simulate` | Encode and dry-run a Universal Router DualPool swap (`scripts/simulate-swap.ts`) |
 
 The spike fails closed: it exits non-zero with an actionable message when `ETHEREUM_RPC_URL` is missing or invalid.
 
-Verified mainnet facts — addresses, deployment blocks, factory registry, interface ids, the demo pool's exact PoolKey, and the negative-liquidity proof — are pinned with reproduction commands in [docs/pins.md](docs/pins.md).
+Verified mainnet facts — addresses, deployment blocks, factory registry, interface ids, the demo pool's exact PoolKey, the negative-liquidity proof, and the Universal Router dry-run — are pinned with reproduction commands in [docs/pins.md](docs/pins.md).
 
 ## License
 

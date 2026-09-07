@@ -34,6 +34,8 @@ export { reverseProvenance, supportsInterface } from "./hookChecks.js";
 export {
   ALLOWLISTED_FACTORY,
   POOL_MANAGER,
+  UNIVERSAL_ROUTER,
+  PERMIT2,
   FIXTURE_HOOK,
   FIXTURE_POOL_ID,
   V4_HOOKS_PUBLIC_REVISION,
@@ -47,3 +49,13 @@ export {
   FIXTURE_HOOK_BIRTH_BLOCK,
   FACTORY_REGISTRY_SNAPSHOT,
 } from "./addresses.js";
+export {
+  DEFAULT_SLIPPAGE_BPS,
+  amountOutMinimumFromQuote,
+  encodeV4ExactInSingleExecute,
+  encodeExecuteCalldata,
+  type EncodedExecute,
+  type UrEncoding,
+} from "./v4Swap.js";
+export { readSwapAllowances, allowanceBlockers, type AllowanceSnapshot } from "./allowances.js";
+export { simulateUniversalRouterExecute, type SimulateSwapResult } from "./simulateSwap.js";

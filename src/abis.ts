@@ -47,3 +47,16 @@ export const erc20MetadataAbi = parseAbi([
   "function decimals() view returns (uint8)",
   "function symbol() view returns (string)",
 ]);
+
+export const erc20Abi = parseAbi([
+  "function balanceOf(address account) view returns (uint256)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+]);
+
+export const permit2Abi = parseAbi([
+  "function allowance(address user, address token, address spender) view returns (uint160 amount, uint48 expiration, uint48 nonce)",
+]);
+
+export const universalRouterAbi = parseAbi([
+  "function execute(bytes commands, bytes[] inputs, uint256 deadline) payable",
+]);

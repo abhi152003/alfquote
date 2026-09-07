@@ -168,6 +168,38 @@ A zero quote would have been recorded as a skip, not success.
 
 **PROCEED.** Vanilla liquidity is 0, effective liquidity is positive, the pool is live, and the indicative quote is positive. Reproduced by `npm run proof` (exit 0). Simulation remains WO-4.
 
+## Universal Router dry-run (WO-4)
+
+Encoded `execute` for one exact-input single-hop DualPool swap. No transaction or approval was sent.
+
+| Pin | Value |
+| --- | --- |
+| Universal Router v2 | `0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af` |
+| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
+| Commands | `0x10` (`V4_SWAP`) |
+| Actions | `0x060c0f` (`SWAP_EXACT_IN_SINGLE`, `SETTLE_ALL`, `TAKE_ALL`) |
+| `hookData` | empty (`0x`) |
+| Encoding | UR v2 `ExactInputSingleParams` (no `minHopPriceX36`) |
+| Slippage | 50 bps (explicit; not the raw quote) |
+
+### Quote vs simulation (block `25924660`)
+
+| Field | Value |
+| --- | --- |
+| Sender (dry-run `msg.sender` only) | `0xF977814e90dA44bFA03b6295A0616a897441aceC` |
+| Exact in | 100 USDC (`100000000` raw) |
+| Indicative quote | `99996353` USDT raw |
+| `amountOutMinimum` | `99496371` USDT raw (quote × 9950 / 10000) |
+| ERC-20 → Permit2 | `0` (blocker, not bypassed) |
+| Permit2 → UR | amount `0`, expiration `0` (blocker, not bypassed) |
+| Simulation | revert `V4TooLittleReceived(99496371, 72792356)` |
+
+The swap action ran and returned `72792356` USDT raw (~72.79 USDT). That is below a 50 bps bound on the indicative quote, so the min-out protection fired. Quotes are not a firm price.
+
+Follow-up at 3000 bps (min `69997447`): swap min-out passed; `execute` then reverted `AllowanceExpired(0)` on settle — correctable by Permit2 approval, which this work order does not create.
+
+No broadcast.
+
 ## Reproduction
 
 ```sh
@@ -175,6 +207,7 @@ npm install
 cp .env.example .env          # set ETHEREUM_RPC_URL to any Ethereum mainnet endpoint
 npm run spike                 # WO-2: factory, provenance, PoolKey pins
 npm run proof                 # WO-3: negative-liquidity proof; exit 0 = PROCEED
+npm run simulate              # WO-4: encode + dry-run Universal Router execute (needs ALFQUOTE_SIMULATION_FROM)
 npm test                      # unit tests incl. ABI selector equivalence + interface ids
 ```
 

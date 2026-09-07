@@ -1,0 +1,17 @@
+[
+  {
+    "type": "function",
+    "name": "allowance",
+    "stateMutability": "view",
+    "inputs": [
+      { "name": "user", "type": "address", "internalType": "address" },
+      { "name": "token", "type": "address", "internalType": "address" },
+      { "name": "spender", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      { "name": "amount", "type": "uint160", "internalType": "uint160" },
+      { "name": "expiration", "type": "uint48", "internalType": "uint48" },
+      { "name": "nonce", "type": "uint48", "internalType": "uint48" }
+    ]
+  }
+]
