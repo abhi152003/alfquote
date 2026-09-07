@@ -11,6 +11,7 @@ const livePositive: ProofSignals = {
   quoteCallFailed: false,
   quoteOutput: 1n,
   slot0Populated: true,
+  vanillaLiquidity: 0n,
 };
 
 describe("decideProof", () => {
@@ -46,5 +47,10 @@ describe("decideProof", () => {
 
   it("STOP when slot0 is uninitialized", () => {
     expect(decideProof({ ...livePositive, slot0Populated: false })).toBe("STOP");
+  });
+
+  it("STOP when vanilla liquidity is above the near-zero threshold", () => {
+    expect(decideProof({ ...livePositive, vanillaLiquidity: 11n })).toBe("STOP");
+    expect(decideProof({ ...livePositive, vanillaLiquidity: 10n })).toBe("PROCEED");
   });
 });

@@ -9,6 +9,9 @@ import {
   RPC_URL_ENV_VAR,
   SpikeConfigError,
   loadSpikeConfig,
+  loadRunOptions,
+  resolveBlockNumber,
+  RunOptionsError,
   createMainnetClient,
   hasBytecode,
   enumerateDeployments,
@@ -24,6 +27,8 @@ import {
   PINNED_POOL_KEY,
   IALFHOOK_INTERFACE_ID,
   IHOOKSTATS_INTERFACE_ID,
+  IALFHOOK_SOURCE_URL,
+  IHOOKSTATS_SOURCE_URL,
   DEMO_POOL_INIT,
   POOL_MANAGER_BIRTH_BLOCK,
   FACTORY_BIRTH_BLOCK,
@@ -58,15 +63,33 @@ async function main(): Promise<void> {
     throw error;
   }
 
+  let run;
+  try {
+    run = loadRunOptions(process.env, process.argv.slice(2));
+  } catch (error) {
+    if (error instanceof RunOptionsError) {
+      console.error(`Spike configuration error: ${error.message}`);
+      process.exit(1);
+    }
+    throw error;
+  }
+
   console.log("ALFQuote mainnet verification spike");
   console.log(`  ${RPC_URL_ENV_VAR}: ${maskRpcUrl(config.rpcUrl)}`);
   console.log();
 
   // createMainnetClient aborts on wrong chains before any read: evidence must be mainnet.
   const client = await createMainnetClient(config);
-  const head = await client.getBlockNumber();
-  console.log(`Connected: chain id 1, latest-state head block ${head}`);
-  console.log("Live reads below are latest-state at that head unless labeled historical.");
+  const resolved = await resolveBlockNumber(client, run.blockNumber);
+  const head = resolved.blockNumber;
+  if (resolved.source === "pinned") {
+    console.log(`Connected: chain id 1, pinned historical block ${head} (archive RPC required to replay)`);
+  } else {
+    console.log(`Connected: chain id 1, latest-state head block ${head}`);
+    console.log("Live reads below are latest-state at that head unless labeled historical.");
+  }
+  console.log(`  IALFHook source: ${IALFHOOK_SOURCE_URL}`);
+  console.log(`  IHookStats source: ${IHOOKSTATS_SOURCE_URL}`);
   console.log();
 
   // The known IERC-165 constant guards the XOR-fold against silent breakage.
@@ -178,21 +201,24 @@ async function main(): Promise<void> {
   );
 
   // --- ERC-165 compatibility on the selected hook -----------------------------
+  const blockLabel = resolved.source === "pinned" ? `pinned block ${head}` : `latest-state ${head}`;
   const supportsErc165 = await supportsInterface(client, selectedHook, IERC165_ID, head);
-  check("ERC-165 base", supportsErc165 ? "pass" : "fail", `supportsInterface(${IERC165_ID}) = ${supportsErc165} (latest-state ${head})`);
+  check("ERC-165 base", supportsErc165 ? "pass" : "fail", `supportsInterface(${IERC165_ID}) = ${supportsErc165} (${blockLabel})`);
 
   const supportsAlf = await supportsInterface(client, selectedHook, IALFHOOK_ID, head);
   check(
     "IALFHook compatibility",
     supportsAlf ? "pass" : "fail",
-    `supportsInterface(${IALFHOOK_ID}) = ${supportsAlf} (latest-state ${head})`,
+    `supportsInterface(${IALFHOOK_ID}) = ${supportsAlf} (${blockLabel})`,
   );
 
   const supportsStats = await supportsInterface(client, selectedHook, IHOOKSTATS_ID, head);
   check(
-    "IHookStats advertisement discrepancy",
-    supportsAlf && !supportsStats ? "pass" : supportsStats ? "info" : "fail",
-    `IALFHook=${supportsAlf} IHookStats=${supportsStats} — stats views are still called directly; ERC-165 is not used as a substitute`,
+    "IHookStats advertisement",
+    "info",
+    supportsStats
+      ? `IHookStats=${supportsStats} advertised (unexpected on current DualPool targets)`
+      : `IHookStats=${supportsStats} — discrepancy, not compatibility success; stats views are called defensively`,
   );
 
   // Fixture-hook ERC-165 status (the demo pool's hook; WO-3 quote targets it)
@@ -209,9 +235,9 @@ async function main(): Promise<void> {
       `supportsInterface(${IALFHOOK_ID}) = ${fxAlf}`,
     );
     check(
-      "fixture IHookStats advertisement discrepancy",
-      fxAlf && !fxStats ? "pass" : fxStats ? "info" : "fail",
-      `IALFHook=${fxAlf} IHookStats=${fxStats} (latest-state ${head})`,
+      "fixture IHookStats advertisement",
+      "info",
+      `IALFHook=${fxAlf} IHookStats=${fxStats} — discrepancy, not compatibility success (block ${head})`,
     );
   }
 

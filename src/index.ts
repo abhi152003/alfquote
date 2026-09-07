@@ -25,7 +25,23 @@ export {
   type HookStatsResult,
   type IndicativeQuoteResult,
 } from "./alfQuote.js";
-export { decideProof, type ProofDecision, type ProofSignals } from "./proofDecision.js";
+export {
+  decideProof,
+  NEAR_ZERO_VANILLA_LIQUIDITY,
+  type ProofDecision,
+  type ProofSignals,
+} from "./proofDecision.js";
+export {
+  AMOUNT_ENV_VAR,
+  BLOCK_ENV_VAR,
+  DEFAULT_AMOUNT_USDC,
+  SWEEP_AMOUNTS_USDC,
+  RunOptionsError,
+  loadRunOptions,
+  resolveBlockNumber,
+  type RunOptions,
+} from "./runOptions.js";
+export { runProtectedSimulation, quoteFillGapBps, type ProtectedSimRun } from "./protectedSim.js";
 export { maskRpcUrl, redactKeys } from "./output.js";
 export {
   hasBytecode,
@@ -46,6 +62,9 @@ export {
   IALFHOOK_INTERFACE_ID,
   IHOOKSTATS_INTERFACE_ID,
   UPSTREAM_SOURCE,
+  IALFHOOK_SOURCE_URL,
+  IHOOKSTATS_SOURCE_URL,
+  V4_CORE_STATE_LIBRARY_URL,
   USDC,
   USDT,
   PINNED_POOL_KEY,

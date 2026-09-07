@@ -28,6 +28,13 @@ export const IHOOKSTATS_INTERFACE_ID = "0x601b90d3" as Hex;
 
 export const UPSTREAM_SOURCE = `https://github.com/Uniswap/v4-hooks-public/tree/${V4_HOOKS_PUBLIC_REVISION}`;
 
+export const IALFHOOK_SOURCE_URL =
+  `https://github.com/Uniswap/v4-hooks-public/blob/${V4_HOOKS_PUBLIC_REVISION}/src/alf/interfaces/IALFHook.sol`;
+export const IHOOKSTATS_SOURCE_URL =
+  `https://github.com/Uniswap/v4-hooks-public/blob/${V4_HOOKS_PUBLIC_REVISION}/src/alf/interfaces/IHookStats.sol`;
+export const V4_CORE_STATE_LIBRARY_URL =
+  `https://github.com/Uniswap/v4-core/blob/${V4_CORE_REVISION}/src/libraries/StateLibrary.sol`;
+
 // Verified mainnet facts, pinned 2026-09-07 (evidence and method in docs/pins.md).
 // The one-off archive binary-search code that located the blocks was removed after
 // verification; these constants are the evidence, not values the spike re-derives.

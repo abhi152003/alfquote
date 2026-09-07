@@ -17,6 +17,8 @@ describe("decodeRevertData", () => {
     expect(decoded.name).toBe("V4TooLittleReceived");
     expect(decoded.shortMessage).toBe("V4TooLittleReceived(99, 72)");
     expect(decoded.correctable).toBe(false);
+    expect(decoded.minOut).toBe(99n);
+    expect(decoded.actualOut).toBe(72n);
   });
 
   it("decodes nested ExecutionFailed AllowanceExpired as correctable", () => {

@@ -23,6 +23,8 @@ cp .env.example .env   # then set ETHEREUM_RPC_URL; for simulate also set ALFQUO
 
 `ETHEREUM_RPC_URL` must be an http(s) or ws(s) endpoint. `.env` is git-ignored; never commit RPC keys.
 
+Shared flags for spike, proof, and simulate (env or argv): `ALFQUOTE_AMOUNT_USDC` / `--amount`, `ALFQUOTE_BLOCK` / `--block`. A pinned block needs an archive-capable RPC. Omit the block for latest-state.
+
 | Command | Action |
 | --- | --- |
 | `npm run dev` | Run the mainnet spike in watch mode |
@@ -31,14 +33,17 @@ cp .env.example .env   # then set ETHEREUM_RPC_URL; for simulate also set ALFQUO
 | `npm test` | Run unit tests (Vitest) |
 | `npm run spike` | Run the mainnet verification spike (`scripts/verify-mainnet.ts`) |
 | `npm run proof` | Run the negative-liquidity proof (`scripts/prove-liquidity.ts`) |
-| `npm run simulate` | Encode and dry-run a Universal Router DualPool swap (`scripts/simulate-swap.ts`) |
-| `npm run check-no-send` | Fail if src/scripts contain broadcast or signer APIs |
+| `npm run simulate` | Protected Universal Router dry-run; exits 0 only on success at 50 bps |
+| `npm run simulate:diagnostic` | Diagnostic dry-run (non-default slippage allowed); never the release result |
+| `npm run sweep` | Quote + simulate at 1, 5, 10, and 100 USDC |
+| `npm run check-no-send` | Fail if src/scripts contain broadcast, signer, or state-override APIs |
+| `npm run release` | Type-check, build, test, no-send, spike, proof, and the intended simulate |
 
 The spike fails closed: it exits non-zero with an actionable message when `ETHEREUM_RPC_URL` is missing or invalid.
 
-CI runs `npm ci`, type-check, build, tests, and a no-send grep. It does not use an RPC secret.
+CI runs `npm ci`, type-check, build, tests, and a no-send grep. It does not use an RPC secret. Live spike/proof/simulate stay on `npm run release` locally.
 
-Verified mainnet facts — addresses, deployment blocks, factory registry, interface ids, the demo pool's exact PoolKey, the negative-liquidity proof, and the Universal Router dry-run — are pinned with reproduction commands in [docs/pins.md](docs/pins.md).
+Verified mainnet facts are pinned in [docs/pins.md](docs/pins.md). Upstream permalinks and the PoolManager slot excerpt are in [docs/upstream/](docs/upstream/).
 
 ## License
 

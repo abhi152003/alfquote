@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { Abi } from "viem";
 import { interfaceIdOf } from "../src/interfaceId.js";
-import { IALFHOOK_INTERFACE_ID, IHOOKSTATS_INTERFACE_ID } from "../src/addresses.js";
+import {
+  IALFHOOK_INTERFACE_ID,
+  IHOOKSTATS_INTERFACE_ID,
+  IALFHOOK_SOURCE_URL,
+  IHOOKSTATS_SOURCE_URL,
+  V4_CORE_STATE_LIBRARY_URL,
+  V4_CORE_REVISION,
+  V4_HOOKS_PUBLIC_REVISION,
+} from "../src/addresses.js";
 import erc165Json from "../src/abi/IERC165.json" with { type: "json" };
 import alfHookJson from "../src/abi/IALFHook.json" with { type: "json" };
 import hookStatsJson from "../src/abi/IHookStats.json" with { type: "json" };
@@ -22,6 +30,11 @@ describe("interfaceIdOf", () => {
     expect(interfaceIdOf(asAbi(hookStatsJson))).toBe(IHOOKSTATS_INTERFACE_ID);
     expect(IALFHOOK_INTERFACE_ID).toBe("0x7adbfbb8");
     expect(IHOOKSTATS_INTERFACE_ID).toBe("0x601b90d3");
+    expect(IALFHOOK_SOURCE_URL).toContain(V4_HOOKS_PUBLIC_REVISION);
+    expect(IALFHOOK_SOURCE_URL).toContain("IALFHook.sol");
+    expect(IHOOKSTATS_SOURCE_URL).toContain("IHookStats.sol");
+    expect(V4_CORE_STATE_LIBRARY_URL).toContain(V4_CORE_REVISION);
+    expect(V4_CORE_STATE_LIBRARY_URL).toContain("StateLibrary.sol");
   });
 });
 

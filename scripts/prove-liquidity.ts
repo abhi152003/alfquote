@@ -4,6 +4,9 @@ import {
   RPC_URL_ENV_VAR,
   SpikeConfigError,
   loadSpikeConfig,
+  loadRunOptions,
+  resolveBlockNumber,
+  RunOptionsError,
   createMainnetClient,
   readVanillaLiquidity,
   readErc20Info,
@@ -12,15 +15,13 @@ import {
   readHookStats,
   getIndicativeQuoteSafe,
   decideProof,
+  NEAR_ZERO_VANILLA_LIQUIDITY,
   POOL_MANAGER,
   FIXTURE_HOOK,
   FIXTURE_POOL_ID,
   PINNED_POOL_KEY,
 } from "../src/index.js";
 import { maskRpcUrl, redactKeys } from "../src/output.js";
-
-/** Exact-input size in whole USDC. */
-const DEMO_INPUT_UNITS = 100n;
 
 async function main(): Promise<void> {
   await run();
@@ -38,17 +39,32 @@ async function run(): Promise<void> {
     throw error;
   }
 
+  let run;
+  try {
+    run = loadRunOptions(process.env, process.argv.slice(2));
+  } catch (error) {
+    if (error instanceof RunOptionsError) {
+      console.error(`Spike configuration error: ${error.message}`);
+      process.exit(1);
+    }
+    throw error;
+  }
+
   console.log("ALFQuote negative-liquidity proof");
   console.log(`  ${RPC_URL_ENV_VAR}: ${maskRpcUrl(config.rpcUrl)}`);
   console.log();
 
   const client = await createMainnetClient(config);
-  const block = await client.getBlockNumber();
+  const resolved = await resolveBlockNumber(client, run.blockNumber);
+  const block = resolved.blockNumber;
   const key = PINNED_POOL_KEY;
+  const amountUnits = run.amountUsdc;
 
   console.log(`Pool: ${FIXTURE_POOL_ID}`);
   console.log(`  currency0=${key.currency0} currency1=${key.currency1} fee=${key.fee} tickSpacing=${key.tickSpacing} hooks=${key.hooks}`);
-  console.log(`All values below are read at block ${block} (same-block comparison).`);
+  console.log(
+    `All values below are read at ${resolved.source} block ${block} (same-block comparison${resolved.source === "pinned" ? "; archive RPC required" : ""}).`,
+  );
   console.log();
 
   const blockers: string[] = [];
@@ -106,10 +122,10 @@ async function run(): Promise<void> {
     blockers.push("effective liquidity is zero on both sides");
   }
 
-  const amountRaw = DEMO_INPUT_UNITS * 10n ** BigInt(token0.decimals);
+  const amountRaw = amountUnits * 10n ** BigInt(token0.decimals);
   const amountSpecified = -amountRaw; // exact input
   console.log();
-  console.log(`Quote: exact input ${DEMO_INPUT_UNITS} ${token0.symbol} (${amountRaw} raw), zeroForOne=true, gas bound ${maxGas ?? "n/a"}`);
+  console.log(`Quote: exact input ${amountUnits} ${token0.symbol} (${amountRaw} raw), zeroForOne=true, gas bound ${maxGas ?? "n/a"}`);
   let quote: Awaited<ReturnType<typeof getIndicativeQuoteSafe>> | null = null;
   const poolIsLive = Boolean(liveness?.hookLive && liveness.poolLive);
   if (maxGas !== null && poolIsLive) {
@@ -146,7 +162,7 @@ async function run(): Promise<void> {
     quote.hookDataEncoding === "empty" &&
     quote.outputAmount !== null &&
     quote.outputAmount > 0n;
-  const nearZeroVanilla = vanilla.liquidity <= 10n;
+  const nearZeroVanilla = vanilla.liquidity <= NEAR_ZERO_VANILLA_LIQUIDITY;
   const quoteAttempted = maxGas !== null && poolIsLive;
   const quoteCallFailed =
     quoteAttempted && (quote === null || quote.outputAmount === null);
@@ -161,6 +177,7 @@ async function run(): Promise<void> {
     quoteCallFailed,
     quoteOutput: quote?.outputAmount ?? null,
     slot0Populated,
+    vanillaLiquidity: vanilla.liquidity,
   });
 
   console.log();

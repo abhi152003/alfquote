@@ -18,17 +18,32 @@ const CORRECTABLE_ERRORS = new Set([
   "InsufficientBalance",
 ]);
 
+export interface SimulateRevert {
+  name: string;
+  shortMessage: string;
+  data?: Hex;
+  correctable: boolean;
+  /** Present when the inner/outer error is `V4TooLittleReceived`. */
+  minOut?: bigint;
+  actualOut?: bigint;
+}
+
 export interface SimulateSwapResult {
   ok: boolean;
   gas?: bigint;
-  revert?: { name: string; shortMessage: string; data?: Hex; correctable: boolean };
+  revert?: SimulateRevert;
 }
 
 export function classifyDecodedError(name: string): boolean {
   return CORRECTABLE_ERRORS.has(name);
 }
 
-export function decodeRevertData(raw: Hex): { name: string; shortMessage: string; correctable: boolean } {
+function tooLittleFields(name: string, args: readonly unknown[]): Pick<SimulateRevert, "minOut" | "actualOut"> {
+  if (name !== "V4TooLittleReceived" || args.length < 2) return {};
+  return { minOut: args[0] as bigint, actualOut: args[1] as bigint };
+}
+
+export function decodeRevertData(raw: Hex): SimulateRevert {
   const parsed = decodeErrorResult({ abi: REVERT_ERROR_ABI, data: raw });
   if (parsed.errorName === "ExecutionFailed") {
     const inner = parsed.args[1] as Hex;
@@ -38,6 +53,7 @@ export function decodeRevertData(raw: Hex): { name: string; shortMessage: string
         name: nested.errorName,
         shortMessage: `ExecutionFailed(${parsed.args[0]}, ${nested.errorName}(${nested.args.map(String).join(", ")}))`,
         correctable: classifyDecodedError(nested.errorName),
+        ...tooLittleFields(nested.errorName, nested.args),
       };
     } catch {
       return {
@@ -51,6 +67,7 @@ export function decodeRevertData(raw: Hex): { name: string; shortMessage: string
     name: parsed.errorName,
     shortMessage: `${parsed.errorName}(${parsed.args.map(String).join(", ")})`,
     correctable: classifyDecodedError(parsed.errorName),
+    ...tooLittleFields(parsed.errorName, parsed.args),
   };
 }
 

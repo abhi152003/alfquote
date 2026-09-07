@@ -25,7 +25,7 @@ export function derivePoolId(key: PoolKey): Hex {
   return keccak256(encoded);
 }
 
-/** `StateLibrary.POOLS_SLOT` in v4-core (`src/libraries/StateLibrary.sol`). */
+/** `StateLibrary.POOLS_SLOT` — see docs/upstream/StateLibrary.excerpt.sol. */
 export const POOLS_SLOT = 6n;
 
 /** `StateLibrary.LIQUIDITY_OFFSET` — liquidity is word 3 of `Pool.State`. */

@@ -16,7 +16,10 @@
     "spike": "node --import tsx --env-file-if-exists=.env scripts/verify-mainnet.ts",
     "proof": "node --import tsx --env-file-if-exists=.env scripts/prove-liquidity.ts",
     "simulate": "node --import tsx --env-file-if-exists=.env scripts/simulate-swap.ts",
-    "check-no-send": "bash scripts/check-no-send.sh"
+    "simulate:diagnostic": "ALFQUOTE_DIAGNOSTIC=1 node --import tsx --env-file-if-exists=.env scripts/simulate-swap.ts",
+    "sweep": "node --import tsx --env-file-if-exists=.env scripts/sweep-sizes.ts",
+    "check-no-send": "bash scripts/check-no-send.sh",
+    "release": "bash scripts/release.sh"
   },
   "dependencies": {
     "viem": "^2.56.3"
