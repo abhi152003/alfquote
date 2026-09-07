@@ -29,6 +29,7 @@ import {
   FACTORY_REGISTRY_SNAPSHOT,
 } from "../src/index.js";
 import { erc165Abi, alfHookAbi, hookStatsAbi } from "../src/abis.js";
+import { maskRpcUrl, redactKeys } from "../src/output.js";
 
 interface CheckResult {
   name: string;
@@ -56,7 +57,7 @@ async function main(): Promise<void> {
   }
 
   console.log("ALFQuote mainnet verification spike");
-  console.log(`  ${RPC_URL_ENV_VAR}: ${maskUrl(config.rpcUrl)}`);
+  console.log(`  ${RPC_URL_ENV_VAR}: ${maskRpcUrl(config.rpcUrl)}`);
   console.log();
 
   // createMainnetClient aborts on wrong chains before any read: evidence must be mainnet.
@@ -122,7 +123,7 @@ async function main(): Promise<void> {
         : `pinned deployments no longer registered: ${missing.join(", ")}`,
     );
   } catch (error) {
-    check("factory enumeration", "fail", `read failed: ${redact(String(error))}`);
+    check("factory enumeration", "fail", `read failed: ${redactKeys(String(error))}`);
   }
 
   // --- Selected hook: factory-attested if possible, else fixture -------------
@@ -229,30 +230,10 @@ async function main(): Promise<void> {
   process.exit(failures ? 1 : 0);
 }
 
-/** Hide credentials in RPC URLs before printing. */
-function maskUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    if (parsed.username || parsed.password) {
-      parsed.username = "***";
-      parsed.password = "";
-    }
-    if (/\/v[23]\/[^/]+/.test(parsed.pathname)) {
-      parsed.pathname = parsed.pathname.replace(/(\/v[23]\/)[^/]+/, "$1***");
-    }
-    return parsed.toString();
-  } catch {
-    return "<unparseable>";
-  }
-}
 
-/** Redact long API keys that RPC error strings may embed. */
-function redact(text: string): string {
-  return text.replace(/(\/v[23]\/)[A-Za-z0-9_-]{8,}/g, "$1***").slice(0, 300);
-}
 
 main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(`\nSpike failed: ${redact(message)}`);
+  console.error(`\nSpike failed: ${redactKeys(message)}`);
   process.exit(1);
 });

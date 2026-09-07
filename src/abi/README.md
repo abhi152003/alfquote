@@ -12,7 +12,8 @@ All files were derived from `Uniswap/v4-hooks-public` at revision
 | `IALFHook.json` | `src/alf/interfaces/IALFHook.sol` |
 | `IAllowlistedFactory.json` | `src/interfaces/IAllowlistedFactory.sol` |
 | `DualPoolHookViews.json` | `factory()` from `src/alf/DualPoolHook.sol`, `livePools(PoolId)` from `src/alf/base/OwnedALFHook.sol` |
-| `IPoolManager.json` | `Initialize` event from Uniswap v4 core `IPoolManager` |
+| `IPoolManager.json` | Deployed `Initialize` event plus `extsload(bytes32)` from Uniswap v4 core `IPoolManager` / `StateLibrary` |
+| `IERC20Metadata.json` | ERC-20 `decimals()` / `symbol()` (live unit labels; never assumed) |
 
 Interface ids are computed from these ABIs at runtime (`src/interfaceId.ts`)
 and verified on-chain through `supportsInterface` in the spike. The exact

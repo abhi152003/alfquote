@@ -8,6 +8,7 @@ import {
   factoryAbi,
   dualPoolHookViewsAbi,
   poolManagerAbi,
+  erc20MetadataAbi,
 } from "../src/abis.js";
 import erc165Json from "../src/abi/IERC165.json" with { type: "json" };
 import hookStatsJson from "../src/abi/IHookStats.json" with { type: "json" };
@@ -15,6 +16,7 @@ import alfHookJson from "../src/abi/IALFHook.json" with { type: "json" };
 import factoryJson from "../src/abi/IAllowlistedFactory.json" with { type: "json" };
 import hookViewsJson from "../src/abi/DualPoolHookViews.json" with { type: "json" };
 import poolManagerJson from "../src/abi/IPoolManager.json" with { type: "json" };
+import erc20Json from "../src/abi/IERC20Metadata.json" with { type: "json" };
 
 /**
  * The JSON files are the canonical ABI pins; src/abis.ts is the typed runtime
@@ -28,6 +30,7 @@ const pairs: Array<[name: string, typed: Abi, json: unknown]> = [
   ["IAllowlistedFactory", factoryAbi, factoryJson],
   ["DualPoolHookViews", dualPoolHookViewsAbi, hookViewsJson],
   ["IPoolManager", poolManagerAbi, poolManagerJson],
+  ["IERC20Metadata", erc20MetadataAbi, erc20Json],
 ];
 
 describe("JSON pins match the typed runtime ABIs", () => {

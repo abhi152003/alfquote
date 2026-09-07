@@ -40,4 +40,10 @@ export const dualPoolHookViewsAbi = parseAbi([
 // Deployed mainnet signature; differs from v4-core main branch (docs/pins.md).
 export const poolManagerAbi = parseAbi([
   "event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)",
+  "function extsload(bytes32 slot) view returns (bytes32)",
+]);
+
+export const erc20MetadataAbi = parseAbi([
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
 ]);

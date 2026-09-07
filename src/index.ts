@@ -6,7 +6,24 @@ export {
 } from "./config.js";
 export { createMainnetClient } from "./client.js";
 export { interfaceIdOf } from "./interfaceId.js";
-export { derivePoolId, type PoolKey } from "./pool.js";
+export {
+  derivePoolId,
+  poolStateSlot,
+  decodeVanillaLiquidity,
+  type PoolKey,
+} from "./pool.js";
+export { readVanillaLiquidity } from "./poolState.js";
+export { readErc20Info, type Erc20Info } from "./erc20.js";
+export {
+  readLiveness,
+  readMaxGas,
+  readHookStats,
+  getIndicativeQuoteSafe,
+  type HookStatsResult,
+  type IndicativeQuoteResult,
+} from "./alfQuote.js";
+export { decideProof, type ProofDecision, type ProofSignals } from "./proofDecision.js";
+export { maskRpcUrl, redactKeys } from "./output.js";
 export {
   hasBytecode,
   enumerateDeployments,

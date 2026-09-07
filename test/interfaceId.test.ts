@@ -58,7 +58,7 @@ describe("pinned ABIs expose the required surface", () => {
     );
   });
 
-  it("IPoolManager has the Initialize event", () => {
-    expect(names(asAbi(poolManagerJson))).toEqual(["Initialize"]);
+  it("IPoolManager has the Initialize event and extsload", () => {
+    expect(names(asAbi(poolManagerJson))).toEqual(["Initialize", "extsload"]);
   });
 });

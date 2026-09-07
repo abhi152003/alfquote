@@ -30,10 +30,11 @@ cp .env.example .env   # then set ETHEREUM_RPC_URL to a mainnet RPC endpoint
 | `npm run build` | Compile to `dist/` |
 | `npm test` | Run unit tests (Vitest) |
 | `npm run spike` | Run the mainnet verification spike (`scripts/verify-mainnet.ts`) |
+| `npm run proof` | Run the negative-liquidity proof (`scripts/prove-liquidity.ts`) |
 
 The spike fails closed: it exits non-zero with an actionable message when `ETHEREUM_RPC_URL` is missing or invalid.
 
-Verified mainnet facts — addresses, deployment blocks, factory registry, interface ids, and the demo pool's exact PoolKey — are pinned with reproduction commands in [docs/pins.md](docs/pins.md).
+Verified mainnet facts — addresses, deployment blocks, factory registry, interface ids, the demo pool's exact PoolKey, and the negative-liquidity proof — are pinned with reproduction commands in [docs/pins.md](docs/pins.md).
 
 ## License
 

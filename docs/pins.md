@@ -109,12 +109,72 @@ encoding is cross-validated against chain truth, and that equality is now
 permanently guarded by `test/pool.test.ts` and re-checked by every spike run
 against the pinned key in `src/addresses.ts` (`PINNED_POOL_KEY`).
 
+## Negative-liquidity proof (WO-3)
+
+Read-only comparison of three capacity signals plus an indicative quote, all
+at **one** Ethereum block against the pinned fixture pool. Labels are fixed:
+
+| Signal | Meaning | Units |
+| --- | --- | --- |
+| PoolManager vanilla liquidity | Persistent v4 liquidity active at the current tick | v4 liquidity (`L`) |
+| DualPool `getReserves` | Total economic assets | token raw units |
+| DualPool `getEffectiveLiquidity` | Currently usable assets | token raw units |
+
+Reserves are **not** executable capacity.
+
+- **Recorded:** 2026-09-07 UTC
+- **Block:** `25923945` (every value below is from this block)
+- **Hook:** fixture `0x00000078BD49D5279a99b5F4011a5C61eE8caaC0`
+- **PoolId:** `0xf32349cbc41fec9d3194f2b4e9ee72ded0bfda412427be9cb8a4087f74bdb065`
+
+### Token units (read live, never assumed)
+
+| Token | Address | `symbol()` | `decimals()` |
+| --- | --- | --- | --- |
+| currency0 | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` | USDC | 6 |
+| currency1 | `0xdAC17F958D2ee523a2206206994597C13D831ec7` | USDT | 6 |
+
+### Liveness and quote bound
+
+| Call | Result |
+| --- | --- |
+| `isLive()` | `true` |
+| `livePools(poolId)` | `true` |
+| `maxGas()` | `800000` (applied as the `eth_call` gas cap) |
+
+### Capacity signals (same block)
+
+| # | Signal | Value |
+| --- | --- | --- |
+| 1 | PoolManager vanilla liquidity | `0` (`L` units). Slot0 is populated (live price); thesis: vanilla depth can be empty while DualPool still quotes. |
+| 2 | DualPool `getReserves` | `837470631` USDC raw / `168801400` USDT raw (`837.470631` USDC / `168.8014` USDT) |
+| 3 | DualPool `getEffectiveLiquidity` | `837470631` USDC raw / `168801400` USDT raw (same as reserves on this pool at this block) |
+
+`IHookStats` is still not ERC-165-advertised (see Caveats). Both views succeeded when called defensively.
+
+### Indicative quote
+
+| Parameter | Value |
+| --- | --- |
+| Direction | `zeroForOne = true` (USDC → USDT) |
+| `amountSpecified` | `-100000000` (exact input of 100 USDC) |
+| `hookData` encoding accepted | empty bytes (`0x`); encoded `ALFHookData` was not required |
+| Gas cap | `800000` |
+| Output | `99996353` USDT raw (`99.996353` USDT) |
+
+A zero quote would have been recorded as a skip, not success.
+
+### Go/no-go
+
+**PROCEED.** Vanilla liquidity is 0, effective liquidity is positive, the pool is live, and the indicative quote is positive. Reproduced by `npm run proof` (exit 0). Simulation remains WO-4.
+
 ## Reproduction
 
 ```sh
 npm install
 cp .env.example .env          # set ETHEREUM_RPC_URL to any Ethereum mainnet endpoint
-npm run spike                 # streams all checks with block numbers; exit 0 = all pass
+npm run spike                 # WO-2: factory, provenance, PoolKey pins
+npm run proof                 # WO-3: negative-liquidity proof; exit 0 = PROCEED
 npm test                      # unit tests incl. ABI selector equivalence + interface ids
 ```
 

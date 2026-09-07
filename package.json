@@ -13,7 +13,8 @@
     "type-check": "tsc --noEmit",
     "build": "tsc --build",
     "test": "vitest run",
-    "spike": "node --import tsx --env-file-if-exists=.env scripts/verify-mainnet.ts"
+    "spike": "node --import tsx --env-file-if-exists=.env scripts/verify-mainnet.ts",
+    "proof": "node --import tsx --env-file-if-exists=.env scripts/prove-liquidity.ts"
   },
   "dependencies": {
     "viem": "^2.56.3"

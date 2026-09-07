@@ -13,5 +13,12 @@
       { "name": "tick", "type": "int24", "indexed": false, "internalType": "int24" }
     ],
     "anonymous": false
+  },
+  {
+    "type": "function",
+    "name": "extsload",
+    "stateMutability": "view",
+    "inputs": [{ "name": "slot", "type": "bytes32", "internalType": "bytes32" }],
+    "outputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }]
   }
 ]

@@ -24,3 +24,21 @@ export function derivePoolId(key: PoolKey): Hex {
   );
   return keccak256(encoded);
 }
+
+/** `pools[poolId]` slot: `keccak256(abi.encode(poolId, 6))`. */
+export function poolStateSlot(poolId: Hex): Hex {
+  return keccak256(
+    encodeAbiParameters(
+      [
+        { name: "poolId", type: "bytes32" },
+        { name: "poolsSlot", type: "uint256" },
+      ],
+      [poolId, 6n],
+    ),
+  );
+}
+
+/** Low 128 bits of the liquidity storage word (`StateLibrary.getLiquidity`). */
+export function decodeVanillaLiquidity(liquidityWord: Hex): bigint {
+  return BigInt(liquidityWord) & ((1n << 128n) - 1n);
+}
