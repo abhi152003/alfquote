@@ -17,6 +17,8 @@ export interface MockRoutes {
   storage?: Record<string, Hex>;
   /** readContract results by `${lowercaseAddress}.${functionName}(${firstArg})`. Errors throw. */
   reads?: Record<string, unknown>;
+  /** Raw eth_call responder; when omitted any eth_call throws. */
+  call?: (req: { to: Address; data: Hex; gas?: bigint; blockNumber?: bigint }) => { data: Hex } | Promise<{ data: Hex }>;
   logs?: MockLog[];
   getLogsError?: Error;
 }
@@ -27,6 +29,10 @@ export interface MockCall {
   address?: Address;
   args?: readonly unknown[];
   blockNumber?: bigint | "latest";
+  /** eth_call fields. */
+  to?: Address;
+  data?: Hex;
+  gas?: bigint;
 }
 
 export interface MockedClient {
@@ -54,11 +60,18 @@ export function fakeClient(routes: MockRoutes): MockedClient {
     },
     readContract: async (req: { address: Address; functionName: string; args?: readonly unknown[] }) => {
       calls.push(req);
-      const key = `${req.address.toLowerCase()}.${req.functionName}(${(req.args ?? [])[0] ?? ""})`;
+      const first = (req.args ?? [])[0];
+      const keyArg = typeof first === "object" && first !== null ? JSON.stringify(first) : (first ?? "");
+      const key = `${req.address.toLowerCase()}.${req.functionName}(${keyArg})`;
       const value = routes.reads?.[key];
       if (value instanceof Error) throw value;
       if (value === undefined) throw new Error(`unexpected read ${key}`);
       return value;
+    },
+    call: async (req: { to: Address; data: Hex; gas?: bigint; blockNumber?: bigint }) => {
+      calls.push({ method: "eth_call", functionName: "eth_call", ...req });
+      if (!routes.call) throw new Error("unexpected eth_call");
+      return routes.call(req);
     },
     getLogs: async (req: Record<string, unknown>) => {
       calls.push({ method: "getLogs", ...req });
