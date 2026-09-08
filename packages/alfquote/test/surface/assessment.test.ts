@@ -4,8 +4,17 @@ import * as assessment from "../../src/assessment.js";
 import { HOOK_ASSESSMENT_KEYS } from "../../src/index.js";
 
 describe("surface: assessment.js (WO-11 owns)", () => {
-  it("exports exactly the assessment-dimension registry", () => {
-    expect(Object.keys(assessment).sort()).toEqual(["HOOK_ASSESSMENT_KEYS"]);
+  it("exports exactly the dimension registry, service, and proxy constants", () => {
+    expect(Object.keys(assessment).sort()).toEqual([
+      "ASSESS_ERROR_CODES",
+      "ASSESS_WARNING_CODES",
+      "DYNAMIC_FEE_FLAG",
+      "EIP1167_PREFIX",
+      "EIP1967_SLOTS",
+      "HOOK_ASSESSMENT_KEYS",
+      "WETH",
+      "assessHook",
+    ]);
   });
 
   it("stays four independent dimensions with no combined verdict", () => {
