@@ -1,12 +1,4 @@
-/**
- * Protected DualPool swap execution on the controlled fork (WO-7).
- *
- * Quotes on the fork through the same empty-`hookData` `IALFHook` path used by
- * the mainnet proof, encodes the same Universal Router v2 `V4_SWAP` calldata,
- * executes it as a normal transaction from the dedicated test address, and
- * measures the delivered output. PASS requires receipt success AND actual
- * output at or above `amountOutMinimum`.
- */
+/** Protected DualPool swap execution on the controlled fork. */
 
 import { toEventSelector } from "viem";
 import type { Address, Hex } from "viem";
@@ -24,12 +16,8 @@ import type { TenderlyConfig } from "./config.js";
 
 export const TRANSFER_EVENT_SELECTOR = toEventSelector("Transfer(address,address,uint256)") as Hex;
 export const POOL_MANAGER_SWAP_SELECTORS = [
-  toEventSelector(
-    "Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)",
-  ),
-  toEventSelector(
-    "Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)",
-  ),
+  toEventSelector("Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)"),
+  toEventSelector("Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)"),
 ] as const;
 export const MODIFY_LIQUIDITY_SELECTOR = toEventSelector(
   "ModifyLiquidity(bytes32 indexed id, address indexed sender, int24 tickLower, int24 tickUpper, int256 liquidityDelta, bytes32 salt)",
@@ -46,7 +34,6 @@ export interface DecodedEventNote {
 }
 
 export interface ForkSwapDeps extends ForkReader {
-  maxGas(): Promise<bigint>;
   indicativeQuote(amountIn: bigint): Promise<IndicativeQuoteResult>;
   blockTimestamp(): Promise<bigint>;
 }
@@ -75,7 +62,6 @@ export interface ForkSwapRun {
   failure?: string;
 }
 
-/** Decode Transfer / Swap / ModifyLiquidity notes from receipt logs; never throws. */
 export function decodeSwapEvents(
   logs: ReadonlyArray<{ address: Address; topics: readonly Hex[]; data: Hex }>,
   args: { outputToken: Address; user: Address; hook: Address },
@@ -89,7 +75,6 @@ export function decodeSwapEvents(
   let transfersToUser = 0n;
   let poolManagerSwapObserved = false;
   let hookModifyLiquidityEvents = 0;
-  // PoolManager Swap/ModifyLiquidity index (id, sender): sender is topics[2].
   const indexedSender = (log: { topics: readonly Hex[] }): Address | undefined =>
     log.topics.length > 2 ? (`0x${log.topics[2]?.slice(26)}` as Address) : undefined;
   for (const log of logs) {
@@ -119,11 +104,6 @@ export function decodeSwapEvents(
   return { events, transfersToUser, poolManagerSwapObserved, hookModifyLiquidityEvents };
 }
 
-/**
- * Deadline for the UR `execute` call. Virtual Environments stamp mined blocks
- * with real-world time, so a latest-block timestamp can be stale after an idle
- * gap; the wall clock is the lower bound that always sits in the future.
- */
 export function executeDeadline(latestBlockTimestamp: bigint, wallClockSeconds: bigint): bigint {
   return (latestBlockTimestamp > wallClockSeconds ? latestBlockTimestamp : wallClockSeconds) + 600n;
 }
@@ -136,16 +116,10 @@ export async function runForkSwap(
   const { config, amountIn } = args;
   const slippageBps = args.slippageBps ?? DEFAULT_SLIPPAGE_BPS;
   const key = PINNED_POOL_KEY;
-
   const quote = await deps.indicativeQuote(amountIn);
-  if (quote.outputAmount === null || quote.outputAmount === 0n) {
-    throw new Error(`Fork quote unusable: ${quote.error ?? "zero"}`);
-  }
-  if (quote.hookDataEncoding !== "empty") {
-    throw new Error(`Fork quote did not use empty DualPool hookData (${quote.hookDataEncoding})`);
-  }
+  if (quote.outputAmount === null || quote.outputAmount === 0n) throw new Error(`Fork quote unusable: ${quote.error ?? "zero"}`);
+  if (quote.hookDataEncoding !== "empty") throw new Error(`Fork quote did not use empty DualPool hookData (${quote.hookDataEncoding})`);
   const amountOutMinimum = amountOutMinimumFromQuote(quote.outputAmount, slippageBps);
-
   const [usdcBefore, usdtBefore, blockTimestamp] = await Promise.all([
     deps.erc20Balance(key.currency0, config.from),
     deps.erc20Balance(key.currency1, config.from),
@@ -157,13 +131,7 @@ export async function runForkSwap(
     "v2",
     deadline,
   );
-
-  const tx = await admin.sendUnsignedTransaction({
-    from: config.from,
-    to: UNIVERSAL_ROUTER,
-    data: encoded.calldata,
-    value: 0n,
-  });
+  const tx = await admin.sendUnsignedTransaction({ from: config.from, to: UNIVERSAL_ROUTER, data: encoded.calldata, value: 0n });
   const receipt = await deps.waitForReceipt(tx);
   const [usdcAfter, usdtAfter] = await Promise.all([
     deps.erc20Balance(key.currency0, config.from),
@@ -171,19 +139,15 @@ export async function runForkSwap(
   ]);
   const actualOut = usdtAfter > usdtBefore ? usdtAfter - usdtBefore : 0n;
   const usdcSpent = usdcBefore > usdcAfter ? usdcBefore - usdcAfter : 0n;
-
-  const decoded = decodeSwapEvents(receipt.logs, {
-    outputToken: key.currency1,
-    user: config.from,
-    hook: FIXTURE_HOOK,
-  });
+  const decoded = decodeSwapEvents(receipt.logs, { outputToken: key.currency1, user: config.from, hook: FIXTURE_HOOK });
 
   let failure: string | undefined;
-  if (receipt.status !== "success") {
-    failure = `swap transaction ${tx} reverted on the Virtual Environment (decode via the dashboard trace or an eth_call replay)`;
-  } else if (actualOut < amountOutMinimum) {
-    failure = `actual output ${actualOut} below amountOutMinimum ${amountOutMinimum}`;
-  }
+  if (receipt.status !== "success") failure = `swap transaction ${tx} reverted on the Virtual Environment`;
+  else if (actualOut < amountOutMinimum) failure = `actual output ${actualOut} below amountOutMinimum ${amountOutMinimum}`;
+  else if (actualOut !== decoded.transfersToUser) failure = `output reconciliation failed: balance delta ${actualOut} != log-summed transfer ${decoded.transfersToUser}`;
+  else if (usdcSpent !== amountIn) failure = `input reconciliation failed: USDC spent ${usdcSpent} != amountIn ${amountIn}`;
+  else if (!decoded.poolManagerSwapObserved) failure = "PoolManager Swap event was not observed";
+  else if (decoded.hookModifyLiquidityEvents === 0) failure = "DualPool hook ModifyLiquidity evidence was not observed";
 
   return {
     amountIn,

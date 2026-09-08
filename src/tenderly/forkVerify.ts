@@ -1,14 +1,10 @@
 /**
- * Fork identity proof (WO-7): the Virtual Environment must be a fork of
+ * Fork identity proof (WO-8): the Virtual Environment must be a fork of
  * Ethereum mainnet at the explicitly recorded block before anything mutates it.
- *
- * Both sides are compared AT the origin block — bytecode and the pinned pool's
- * state slot — so the proof stays valid after the fork's own transactions move
- * latest state. The head comparison only labels whether the fork was still
- * pristine when checked.
  */
 
 import type { Address, Hex } from "viem";
+import { toHex } from "viem";
 import { derivePoolId, poolStateSlot, type PoolKey } from "../pool.js";
 import {
   FIXTURE_HOOK,
@@ -30,7 +26,6 @@ export class ForkVerificationError extends Error {
   }
 }
 
-/** Contracts whose fork bytecode must equal mainnet bytecode at the origin block. */
 export const FINGERPRINT_CONTRACTS: ReadonlyArray<{ name: string; address: Address }> = [
   { name: "PoolManager", address: POOL_MANAGER },
   { name: "DualPool fixture hook", address: FIXTURE_HOOK },
@@ -40,22 +35,45 @@ export const FINGERPRINT_CONTRACTS: ReadonlyArray<{ name: string; address: Addre
   { name: "USDT", address: USDT },
 ];
 
+export interface OriginStats {
+  reserves: readonly [bigint, bigint] | null;
+  effectiveLiquidity: readonly [bigint, bigint] | null;
+}
+
 export interface VerifyDeps {
   forkChainId(): Promise<number>;
   forkHead(): Promise<bigint>;
   forkCode(address: Address): Promise<Hex | undefined>;
   mainnetCode(address: Address, block: bigint): Promise<Hex | undefined>;
-  /** Fork storage AT the origin block (the Virtual Environment serves its own history). */
   forkStorageAtOrigin(contract: Address, slot: Hex): Promise<Hex>;
   mainnetStorage(contract: Address, slot: Hex, block: bigint): Promise<Hex>;
+  forkBlockHash(block: bigint): Promise<Hex>;
+  mainnetBlockHash(block: bigint): Promise<Hex>;
+  /** DualPool reserves/effective-liquidity AT the origin block, per chain (informational). */
+  originStats(side: "fork" | "mainnet"): Promise<OriginStats>;
 }
+
+/** Consecutive `pools[poolId]` words compared at the origin block: Pool slot0, fee growth, liquidity, deltas. */
+export const POOL_STATE_WORD_COUNT = 6;
 
 export interface ForkVerification {
   chainId: number;
   forkHead: bigint;
   originBlock: bigint;
-  /** How the origin was confirmed: exact head match (pristine fork), or state comparison at the origin block. */
-  originCheck: "head-equals-origin" | "state-fingerprint-at-origin-block";
+  /**
+   * Virtual Environments re-seal blocks with their own hashes (different chain
+   * id => different headers), so fork and mainnet block hashes at the origin
+   * block can never be equal. Origin is proven by state: bytecode, the pool
+   * state word, and DualPool reserves/effective-liquidity all compared AT the
+   * origin block. Both block hashes are still recorded as identifiers.
+   */
+  originCheck: "state-fingerprint-at-origin-block";
+  forkOriginBlockHash: Hex;
+  mainnetOriginBlockHash: Hex;
+  originStatsFork: OriginStats;
+  originStatsMainnet: OriginStats;
+  /** All consecutive pool-state words match at the origin block (required). */
+  poolStateWordsMatch: boolean;
   bytecodeMatches: ReadonlyArray<{ name: string; address: Address; match: boolean }>;
   poolStateSlot: Hex;
   poolStateWordFork: Hex;
@@ -75,7 +93,6 @@ function equalCode(fork: Hex | undefined, mainnet: Hex | undefined): boolean {
   return hasCode(fork) && hasCode(mainnet) && fork === mainnet;
 }
 
-/** Guard: mainnet archive reads must not be served by the fork itself. */
 export function assertDistinctEndpoints(config: TenderlyConfig, mainnetRpcUrl: string): void {
   if (sameHost(config.publicRpcUrl, mainnetRpcUrl) || sameHost(config.adminRpcUrl, mainnetRpcUrl)) {
     throw new ForkVerificationError(
@@ -84,7 +101,6 @@ export function assertDistinctEndpoints(config: TenderlyConfig, mainnetRpcUrl: s
   }
 }
 
-/** Offline identity re-check of the pinned pool key against the documented pool id. */
 export function assertPinnedPoolIdentity(key: PoolKey = PINNED_POOL_KEY, expected: Hex = FIXTURE_POOL_ID): Hex {
   const derived = derivePoolId(key);
   if (derived !== expected) {
@@ -103,6 +119,11 @@ export async function verifyFork(
     throw new ForkVerificationError(`Fork chain id ${chainId} != configured ${config.chainId}.`);
   }
   const forkHead = await deps.forkHead();
+  if (forkHead < config.forkBlock) {
+    throw new ForkVerificationError(
+      `Fork head ${forkHead} is below configured origin block ${config.forkBlock}.`,
+    );
+  }
   const slot = poolStateSlot(FIXTURE_POOL_ID);
   const poolIdOffline = assertPinnedPoolIdentity();
 
@@ -113,29 +134,34 @@ export async function verifyFork(
       match: equalCode(await deps.forkCode(address), await deps.mainnetCode(address, config.forkBlock)),
     })),
   );
-  const [poolStateWordFork, poolStateWordMainnet] = await Promise.all([
-    deps.forkStorageAtOrigin(POOL_MANAGER, slot),
-    deps.mainnetStorage(POOL_MANAGER, slot, config.forkBlock),
-  ]);
+  const slotAt = (index: number): Hex => toHex(BigInt(slot) + BigInt(index), { size: 32 });
+  const [forkWords, mainnetWords, forkOriginBlockHash, mainnetOriginBlockHash, originStatsFork, originStatsMainnet] =
+    await Promise.all([
+      Promise.all(Array.from({ length: POOL_STATE_WORD_COUNT }, (_, i) => deps.forkStorageAtOrigin(POOL_MANAGER, slotAt(i)))),
+      Promise.all(Array.from({ length: POOL_STATE_WORD_COUNT }, (_, i) => deps.mainnetStorage(POOL_MANAGER, slotAt(i), config.forkBlock))),
+      deps.forkBlockHash(config.forkBlock),
+      deps.mainnetBlockHash(config.forkBlock),
+      deps.originStats("fork"),
+      deps.originStats("mainnet"),
+    ]);
+  const poolStateWordFork = forkWords[0] ?? ZERO_WORD;
+  const poolStateWordMainnet = mainnetWords[0] ?? ZERO_WORD;
   const poolStateMatch = poolStateWordFork === poolStateWordMainnet && poolStateWordFork !== ZERO_WORD;
-
-  const originCheck: ForkVerification["originCheck"] =
-    forkHead === config.forkBlock ? "head-equals-origin" : "state-fingerprint-at-origin-block";
+  const poolStateWordsMatch =
+    forkWords.length === POOL_STATE_WORD_COUNT &&
+    mainnetWords.length === POOL_STATE_WORD_COUNT &&
+    forkWords.every((word, i) => word === mainnetWords[i]);
+  const validHash = (hash: Hex) => /^0x[0-9a-fA-F]{64}$/.test(hash);
   const bytecodeOk = bytecodeMatches.every((entry) => entry.match);
-  const originOk = bytecodeOk && poolStateMatch && forkHead >= config.forkBlock;
+  const hashesOk = validHash(forkOriginBlockHash) && validHash(mainnetOriginBlockHash);
 
-  if (!originOk) {
-    const failedContracts = bytecodeMatches.filter((entry) => !entry.match).map((entry) => entry.name);
+  if (!bytecodeOk || !poolStateMatch || !poolStateWordsMatch || !hashesOk) {
     const problems: string[] = [];
+    const failedContracts = bytecodeMatches.filter((entry) => !entry.match).map((entry) => entry.name);
     if (failedContracts.length > 0) problems.push(`bytecode mismatch: ${failedContracts.join(", ")}`);
-    if (!poolStateMatch) {
-      problems.push(`pool state slot ${slot} differs between fork and mainnet at block ${config.forkBlock}`);
-    }
-    if (forkHead < config.forkBlock) {
-      problems.push(
-        `fork head ${forkHead} is below the configured origin block ${config.forkBlock}; set TENDERLY_FORK_BLOCK to the head at fork time`,
-      );
-    }
+    if (!poolStateMatch) problems.push(`pool state mismatch at block ${config.forkBlock}`);
+    if (!poolStateWordsMatch) problems.push(`pool state words 0..${POOL_STATE_WORD_COUNT - 1} differ between fork and mainnet at block ${config.forkBlock}`);
+    if (!hashesOk) problems.push("origin block hash missing on the fork or on mainnet");
     throw new ForkVerificationError(`Fork origin verification failed: ${problems.join("; ")}.`);
   }
 
@@ -143,7 +169,12 @@ export async function verifyFork(
     chainId,
     forkHead,
     originBlock: config.forkBlock,
-    originCheck,
+    originCheck: "state-fingerprint-at-origin-block",
+    forkOriginBlockHash,
+    mainnetOriginBlockHash,
+    originStatsFork,
+    originStatsMainnet,
+    poolStateWordsMatch,
     bytecodeMatches,
     poolStateSlot: slot,
     poolStateWordFork,

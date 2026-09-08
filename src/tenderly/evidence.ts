@@ -1,8 +1,4 @@
-/**
- * Machine-readable controlled-fork evidence (WO-7). The Admin RPC URL (and any
- * path secrets in the public URL) must never appear in the evidence file or in
- * exported submission artifacts — `assertNoEndpointSecrets` enforces that.
- */
+/** Machine-readable controlled-fork evidence with strict release validation. */
 
 import { maskTenderlyUrl } from "./config.js";
 import type { TenderlyConfig } from "./config.js";
@@ -18,6 +14,10 @@ export interface ForkEvidence {
   forkChainId: number;
   forkHeadAtVerification: bigint;
   originCheck: ForkVerification["originCheck"];
+  forkOriginBlockHash: string;
+  mainnetOriginBlockHash: string;
+  /** VEs re-seal blocks, so hashes are recorded identifiers, not an equality check. */
+  poolStateWordsMatch: boolean;
   publicEndpoint: string;
   testAddress: string;
   poolId: string;
@@ -25,6 +25,14 @@ export interface ForkEvidence {
     bytecodeMatches: ForkVerification["bytecodeMatches"];
     poolStateMatch: boolean;
     poolIdOffline: string;
+    /**
+     * Informational: DualPool hook views derive from vault shares and block
+     * timestamps, and VE blocks are resealed with their own timestamps, so
+     * these values differ microscopically from mainnet at the same block
+     * number even when storage is identical. Origin is proven by bytecode and
+     * storage-word equality, not by these views.
+     */
+    originStats: { fork: ForkVerification["originStatsFork"]; mainnet: ForkVerification["originStatsMainnet"] };
     adminProbeLatestBlock: ForkVerification["latestBlockInfo"];
   };
   setup: {
@@ -51,7 +59,7 @@ export interface ForkEvidence {
     commands: string;
     actions: string;
     calldata: string;
-    /** Raw receipt logs — the recorded execution trace (addresses, topics, data). */
+    decodedEvents: ForkSwapRun["events"];
     receiptLogs: ReadonlyArray<{ address: string; topics: readonly string[]; data: string }>;
     pass: boolean;
     failure?: string;
@@ -61,6 +69,13 @@ export interface ForkEvidence {
 
 export const CONTROLLED_FORK_DISCLAIMER =
   "Executed on a Tenderly Virtual Environment fork of Ethereum mainnet with injected balances and approvals. Not an Ethereum mainnet transaction.";
+
+export class ForkEvidenceValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ForkEvidenceValidationError";
+  }
+}
 
 export function buildForkEvidence(args: {
   config: TenderlyConfig;
@@ -79,6 +94,9 @@ export function buildForkEvidence(args: {
     forkChainId: args.verification.chainId,
     forkHeadAtVerification: args.verification.forkHead,
     originCheck: args.verification.originCheck,
+    forkOriginBlockHash: args.verification.forkOriginBlockHash,
+    mainnetOriginBlockHash: args.verification.mainnetOriginBlockHash,
+    poolStateWordsMatch: args.verification.poolStateWordsMatch,
     publicEndpoint: maskTenderlyUrl(args.config.publicRpcUrl),
     testAddress: args.config.from,
     poolId: args.poolId,
@@ -86,6 +104,7 @@ export function buildForkEvidence(args: {
       bytecodeMatches: args.verification.bytecodeMatches,
       poolStateMatch: args.verification.poolStateMatch,
       poolIdOffline: args.verification.poolIdOffline,
+      originStats: { fork: args.verification.originStatsFork, mainnet: args.verification.originStatsMainnet },
       adminProbeLatestBlock: args.verification.latestBlockInfo,
     },
     setup: {
@@ -112,6 +131,7 @@ export function buildForkEvidence(args: {
       commands: args.swap.encoded.commands,
       actions: args.swap.encoded.actions,
       calldata: args.swap.encoded.calldata,
+      decodedEvents: args.swap.events,
       receiptLogs: args.swap.receipt.logs,
       pass: args.swap.pass,
       ...(args.swap.failure !== undefined ? { failure: args.swap.failure } : {}),
@@ -120,10 +140,37 @@ export function buildForkEvidence(args: {
   };
 }
 
-/**
- * Fail closed if serialized evidence contains any endpoint URL or its path.
- * Run before writing or exporting evidence.
- */
+export function validateReleaseEvidence(evidence: ForkEvidence): void {
+  const failures: string[] = [];
+  const validHash = (hash: string) => /^0x[0-9a-fA-F]{64}$/.test(hash);
+  if (!validHash(evidence.forkOriginBlockHash) || !validHash(evidence.mainnetOriginBlockHash)) failures.push("origin block hash identifiers are missing");
+  if (!evidence.poolStateWordsMatch) failures.push("pool storage words at the origin block do not match mainnet");
+  if (!evidence.verification.poolStateMatch) failures.push("pool state does not match mainnet");
+  if (!evidence.verification.bytecodeMatches.every((entry) => entry.match)) failures.push("contract bytecode fingerprint is incomplete");
+  const fundingKinds = new Set(evidence.setup.funding.map((record) => record.kind));
+  if (!fundingKinds.has("fund-native") || !fundingKinds.has("fund-erc20")) failures.push("fresh-run funding identifiers are missing");
+  const approvalKinds = new Set(evidence.setup.approvals.map((record) => record.kind));
+  if (!approvalKinds.has("approve-erc20-permit2") || !approvalKinds.has("approve-permit2-router")) failures.push("normal approval transactions are missing");
+  if (evidence.setup.funding.some((record) => record.kind === "fund-skipped") || evidence.setup.approvals.some((record) => record.kind === "approve-skipped")) failures.push("release evidence contains skipped setup records");
+  if (evidence.setup.storageOverrides.length > 0) failures.push("release evidence used a storage override");
+  if (!evidence.swap.pass || evidence.swap.receiptStatus !== "success") failures.push("protected swap did not succeed");
+  if (evidence.swap.actualOut < evidence.swap.amountOutMinimum) failures.push("actual output is below minimum output");
+  if (evidence.swap.actualOut !== evidence.swap.transfersToUserFromLogs) failures.push("output measurements do not reconcile");
+  if (evidence.swap.usdcSpent !== evidence.swap.amountIn) failures.push("input spend does not reconcile");
+  if (!evidence.swap.poolManagerSwapObserved || evidence.swap.hookModifyLiquidityEvents === 0) failures.push("required swap or hook evidence is missing");
+  if (evidence.swap.receiptLogs.length === 0 || evidence.swap.decodedEvents.length === 0) failures.push("exported execution trace is empty");
+  if (!evidence.evidenceLink) failures.push("public/read-only Tenderly evidence link is missing");
+  else {
+    try {
+      const link = new URL(evidence.evidenceLink);
+      if (link.protocol !== "https:") failures.push("evidence link must use https");
+    } catch {
+      failures.push("evidence link is not a valid URL");
+    }
+  }
+  if (failures.length > 0) throw new ForkEvidenceValidationError(failures.join("; "));
+}
+
 export function assertNoEndpointSecrets(serialized: string, config: TenderlyConfig): void {
   const forbidden: string[] = [];
   for (const url of [config.adminRpcUrl, config.publicRpcUrl]) {
@@ -133,14 +180,10 @@ export function assertNoEndpointSecrets(serialized: string, config: TenderlyConf
     }
     try {
       const path = new URL(url).pathname;
-      if (path !== "/" && serialized.includes(path)) {
-        forbidden.push(`${maskTenderlyUrl(url)} (path)`);
-      }
+      if (path !== "/" && serialized.includes(path)) forbidden.push(`${maskTenderlyUrl(url)} (path)`);
     } catch {
-      // Unparseable URLs are rejected by config validation already.
+      // Config validation rejects malformed URLs.
     }
   }
-  if (forbidden.length > 0) {
-    throw new Error(`Evidence contains a Tenderly endpoint secret: ${forbidden.join(", ")}. Refusing to export.`);
-  }
+  if (forbidden.length > 0) throw new Error(`Evidence contains a Tenderly endpoint secret: ${forbidden.join(", ")}. Refusing to export.`);
 }
