@@ -10,17 +10,19 @@ import {
   decodeRevert,
   DEFAULT_SLIPPAGE_BPS,
   erc20Abi, permit2Abi,
-  FIXTURE_HOOK,
-  FIXTURE_POOL_ID,
   getIndicativeQuoteSafe,
   PERMIT2,
-  PINNED_POOL_KEY,
   readErc20Info,
   readHookStats,
   readMaxGas,
   redactRpcSecrets,
   UNIVERSAL_ROUTER,
 } from "alfquote";
+import {
+  FIXTURE_HOOK,
+  FIXTURE_POOL_ID,
+  PINNED_POOL_KEY,
+} from "alfquote/phase1";
 import {
   createMainnetClient,
 } from "../lib/client.js";

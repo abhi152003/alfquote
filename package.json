@@ -15,7 +15,7 @@
     "dev": "node --import tsx --env-file-if-exists=.env --watch scripts/phase1/verify-mainnet.ts",
     "build:lib": "npm run build --workspace alfquote",
     "build": "npm run build --workspace alfquote && npm run build --workspace @alfquote/cli",
-    "type-check": "npm run type-check --workspace alfquote && npm run type-check --workspace @alfquote/cli && tsc --noEmit -p tsconfig.json",
+    "type-check": "npm run build:lib && npm run type-check --workspace alfquote && npm run type-check --workspace @alfquote/cli && tsc --noEmit -p tsconfig.json",
     "pretest": "npm run build:lib",
     "test": "vitest run",
     "prespike": "npm run build:lib",

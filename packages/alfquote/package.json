@@ -12,9 +12,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./phase1": {
+      "types": "./dist/phase1.d.ts",
+      "import": "./dist/phase1.js",
+      "default": "./dist/phase1.js"
     }
   },
   "files": [

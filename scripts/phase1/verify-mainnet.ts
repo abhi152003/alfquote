@@ -7,16 +7,10 @@
  */
 import {
   ALLOWLISTED_FACTORY,
-  DEMO_POOL_INIT,
   derivePoolId,
   enumerateDeployments,
   erc165Abi, alfHookAbi, hookStatsAbi,
-  FACTORY_BIRTH_BLOCK,
-  FACTORY_REGISTRY_SNAPSHOT,
   factoryProvenance,
-  FIXTURE_HOOK,
-  FIXTURE_HOOK_BIRTH_BLOCK,
-  FIXTURE_POOL_ID,
   hasBytecode,
   IALFHOOK_INTERFACE_ID,
   IALFHOOK_SOURCE_URL,
@@ -24,12 +18,20 @@ import {
   IHOOKSTATS_SOURCE_URL,
   interfaceIdOf,
   maskRpcUrl, redactKeys,
-  PINNED_POOL_KEY,
   POOL_MANAGER,
-  POOL_MANAGER_BIRTH_BLOCK,
   reverseProvenance,
   supportsInterface,
 } from "alfquote";
+import {
+  DEMO_POOL_INIT,
+  FACTORY_BIRTH_BLOCK,
+  FACTORY_REGISTRY_SNAPSHOT,
+  FIXTURE_HOOK,
+  FIXTURE_HOOK_BIRTH_BLOCK,
+  FIXTURE_POOL_ID,
+  PINNED_POOL_KEY,
+  POOL_MANAGER_BIRTH_BLOCK,
+} from "alfquote/phase1";
 import {
   createMainnetClient,
 } from "../lib/client.js";

@@ -8,7 +8,8 @@ import {
   verifyFork,
   type VerifyDeps,
 } from "../forkVerify.js";
-import { FIXTURE_POOL_ID, PINNED_POOL_KEY, POOL_MANAGER } from "alfquote";
+import { POOL_MANAGER } from "alfquote";
+import { FIXTURE_POOL_ID, PINNED_POOL_KEY } from "alfquote/phase1";
 import { loadTenderlyConfig } from "../config.js";
 import type { TenderlyAdmin } from "../adminClient.js";
 

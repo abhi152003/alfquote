@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { poolStateSlot, decodeVanillaLiquidity, POOLS_SLOT, LIQUIDITY_OFFSET } from "../src/pool.js";
-import { FIXTURE_POOL_ID, V4_CORE_REVISION } from "../src/addresses.js";
+import { V4_CORE_REVISION } from "../src/addresses.js";
+import { FIXTURE_POOL_ID } from "../src/phase1.js";
 
 describe("poolStateSlot", () => {
   it("matches the precomputed keccak256(abi.encode(poolId, POOLS_SLOT)) vector", () => {

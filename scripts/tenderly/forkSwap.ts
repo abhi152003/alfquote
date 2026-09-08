@@ -7,11 +7,13 @@ import {
   type EncodedExecute,
   DEFAULT_SLIPPAGE_BPS,
   encodeV4ExactInSingleExecute,
-  FIXTURE_HOOK,
   type IndicativeQuoteResult,
-  PINNED_POOL_KEY,
   UNIVERSAL_ROUTER,
 } from "alfquote";
+import {
+  FIXTURE_HOOK,
+  PINNED_POOL_KEY,
+} from "alfquote/phase1";
 import type { ForkReceipt, ForkReader } from "./forkSetup.js";
 import type { TenderlyAdmin } from "./adminClient.js";
 import type { TenderlyConfig } from "./config.js";

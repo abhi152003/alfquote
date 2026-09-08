@@ -105,3 +105,35 @@ Delegate: fresh general-purpose review subagent (read-only), verifying the Round
 - **Verdict:** APPROVED
 
 ---
+## Round 3 (correction pass)
+
+Delegate: fresh general-purpose review subagent (read-only), verifying the seven user-required corrections to commit 02ae0bb.
+
+### Fix verification (all seven CONFIRMED by the delegate)
+
+1. Manifest `types` targets → emitted declarations (dist d.ts for main, phase1, and CLI); zero remaining source-type targets; root `type-check` builds the library first so `npm ci && npm run type-check` still works.
+2. Canonical serializer (`serialize.ts`): delegate probed built dist — bigint→decimal string (incl. negative), undefined-prop dropping, undefined array slots/sparse holes → null, Date/Map/Set/class instances/functions/symbols throw; envelope round-trips JSON.parse.
+3. `PoolId` defined in `pool.ts` and used across quote/swap/assessment inputs and the fixture constants.
+4. `NamespacedCode` types all three envelope code fields; `COMMON_ERROR_CODES` registry + `isNamespacedCode` validator tested.
+5. `alfquote/phase1` subpath: fixture constants physically relocated, diagnostic and `runProtectedSimulation` served only from phase1 (absent from main index and dist d.ts), `quoteFillGapBps` stays main; runtime import resolves exactly the 10 pinned names.
+6. WO-12/WO-13 ownership documented at the fixture-adapter lock site.
+7. `test/surface/` splits allowlists by owner; the barrel-union test empirically catches value-name collisions (ESM `export *` drops them; union keeps them); no phase1 name leaks into the main entry.
+
+Also verified: `docs/fork-evidence.json` zero diff; pins.md exactly 3 path lines changed; every script fixture import resolves from `alfquote/phase1`; no import cycles; gates cover phase1.ts.
+
+### New findings (none blocking; dispositions)
+
+- A-1 (advisory, serialize.ts): `instanceof Object` made the null-prototype acceptance dead code. **Fixed:** dispatch on `typeof value === "object"`; regression test with `Object.create(null)` added; re-verified.
+- A-2 (advisory, barrel.test): collision detection is value-only (type-only name collisions invisible to `Object.keys`). **Accepted as-is** for now: type-only collisions would surface immediately in downstream consumers' type-checks; revisit if WO-10..13 export overlapping type names.
+- A-3 (advisory, phase1.ts): WO numbers now named in the header at the lock site. **Fixed.**
+- A-4 (advisory, implementation-plan.md): superseded markers added inline at the pre-correction rationale so a future agent cannot re-apply the rejected `src` types design. **Fixed.**
+- I-1 (info): stale local `dist/protectedSim.js` from the incremental build — **removed** via clean rebuild (gitignored artifact; absent from fresh checkouts).
+
+### Round 3 Verdict
+
+- Total blocking: 0
+- Total advisory: 4 (3 fixed post-verdict, 1 accepted with rationale)
+- Files reviewed: full correction diff vs 02ae0bb
+- **Verdict:** APPROVED
+
+---

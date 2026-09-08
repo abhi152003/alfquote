@@ -2,12 +2,9 @@
 import { formatUnits } from "viem";
 import {
   decideProof,
-  FIXTURE_HOOK,
-  FIXTURE_POOL_ID,
   getIndicativeQuoteSafe,
   maskRpcUrl, redactKeys,
   NEAR_ZERO_VANILLA_LIQUIDITY,
-  PINNED_POOL_KEY,
   POOL_MANAGER,
   readErc20Info,
   readHookStats,
@@ -15,6 +12,11 @@ import {
   readMaxGas,
   readVanillaLiquidity,
 } from "alfquote";
+import {
+  FIXTURE_HOOK,
+  FIXTURE_POOL_ID,
+  PINNED_POOL_KEY,
+} from "alfquote/phase1";
 import {
   createMainnetClient,
 } from "../lib/client.js";

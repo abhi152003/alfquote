@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "viem";
-import { FIXTURE_HOOK, PINNED_POOL_KEY, USDC, USDT } from "alfquote";
+import { USDC, USDT } from "alfquote";
+import { FIXTURE_HOOK, PINNED_POOL_KEY } from "alfquote/phase1";
 import { MODIFY_LIQUIDITY_SELECTOR, POOL_MANAGER_SWAP_SELECTORS, TRANSFER_EVENT_SELECTOR, decodeSwapEvents, executeDeadline, runForkSwap } from "../forkSwap.js";
 import { assertNoEndpointSecrets } from "../evidence.js";
 import type { ForkReceipt, ForkReader } from "../forkSetup.js";

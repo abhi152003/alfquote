@@ -7,15 +7,17 @@ import type { Address, Hex } from "viem";
 import { toHex } from "viem";
 import {
   derivePoolId, poolStateSlot, type PoolKey,
-  FIXTURE_HOOK,
-  FIXTURE_POOL_ID,
   PERMIT2,
-  PINNED_POOL_KEY,
   POOL_MANAGER,
   UNIVERSAL_ROUTER,
   USDC,
   USDT,
 } from "alfquote";
+import {
+  FIXTURE_HOOK,
+  FIXTURE_POOL_ID,
+  PINNED_POOL_KEY,
+} from "alfquote/phase1";
 import { sameHost, type TenderlyConfig } from "./config.js";
 import type { LatestBlockInfo, TenderlyAdmin } from "./adminClient.js";
 

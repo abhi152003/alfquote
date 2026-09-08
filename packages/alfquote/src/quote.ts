@@ -1,12 +1,13 @@
 /** Public quote view types (service implementation lands with the quote work order). */
 
 import type { Hex } from "viem";
+import type { PoolId } from "./pool.js";
 
 /** Swap direction requested by the caller. */
 export type QuoteDirection = "exact-in" | "exact-out";
 
 export interface QuoteInput {
-  readonly poolId: Hex;
+  readonly poolId: PoolId;
   readonly amount: bigint;
   readonly direction: QuoteDirection;
 }
@@ -16,7 +17,7 @@ export interface QuoteInput {
  * negative for exact input, positive for exact output.
  */
 export interface IndicativeQuoteView {
-  readonly poolId: Hex;
+  readonly poolId: PoolId;
   readonly zeroForOne: boolean;
   readonly amountSpecified: bigint;
   readonly outputAmount: bigint;
@@ -29,7 +30,7 @@ export interface IndicativeQuoteView {
 
 /** Currently usable (vault-aware) liquidity; size fills from this, never from reserves. */
 export interface EffectiveLiquidityView {
-  readonly poolId: Hex;
+  readonly poolId: PoolId;
   readonly effectiveLiquidity: readonly [bigint, bigint];
   readonly block: bigint;
 }

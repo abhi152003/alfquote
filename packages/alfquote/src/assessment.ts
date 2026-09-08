@@ -4,7 +4,8 @@
  * the public contract (see `HOOK_ASSESSMENT_KEYS`).
  */
 
-import type { Address, Hex } from "viem";
+import type { Address } from "viem";
+import type { PoolId } from "./pool.js";
 
 /** Whether ERC-165 and the required `IALFHook` calls establish a usable quote surface. */
 export type CompatibilityStatus = "supported" | "unsupported" | "unverified";
@@ -63,5 +64,5 @@ const assessmentKeysExact: [ExtraAssessmentKeys] extends [never]
 
 export interface AssessInput {
   readonly hook: Address;
-  readonly poolId?: Hex;
+  readonly poolId?: PoolId;
 }

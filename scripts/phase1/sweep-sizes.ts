@@ -6,8 +6,10 @@ import {
   maskRpcUrl,
   quoteFillGapBps,
   redactKeys,
-  runProtectedSimulation,
 } from "alfquote";
+import {
+  runProtectedSimulation,
+} from "alfquote/phase1";
 import {
   createMainnetClient,
 } from "../lib/client.js";

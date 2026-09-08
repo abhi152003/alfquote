@@ -1,5 +1,7 @@
 /** Versioned command-result envelopes shared by every ALFQuote command surface. */
 
+import type { NamespacedCode } from "./codes.js";
+
 /**
  * Schema version of the result envelope. Bump on any breaking change to the
  * envelope shape so consumers (CLI, `uniswap-ai` skill) can branch on it.
@@ -20,24 +22,24 @@ export interface ChainBlockContext {
 
 /** Structured, machine-codeable warning; never fatal. */
 export interface Warning {
-  /** Stable namespaced code, e.g. `"quote/view-drift"`. */
-  readonly code: string;
+  /** Namespaced `domain/reason` code, e.g. `"quote/view-drift"`. */
+  readonly code: NamespacedCode;
   readonly message: string;
   readonly detail?: string;
 }
 
 /** Structured error carried by `error` results. */
 export interface StructuredError {
-  /** Stable namespaced code, e.g. `"rpc/chain-mismatch"`. */
-  readonly code: string;
+  /** Namespaced `domain/reason` code, e.g. `"rpc/chain-mismatch"`. */
+  readonly code: NamespacedCode;
   readonly message: string;
   readonly detail?: string;
 }
 
 /** Why a command declined to produce data without failing. */
 export interface SkipReason {
-  /** Stable namespaced code, e.g. `"quote/zero-output"`. */
-  readonly code: string;
+  /** Namespaced `domain/reason` code, e.g. `"quote/zero-output"`. */
+  readonly code: NamespacedCode;
   readonly message: string;
 }
 

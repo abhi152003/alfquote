@@ -20,7 +20,7 @@ Exact upstream links and the StateLibrary excerpt are in [docs/upstream/](upstre
 | `IHookStats` | [`IHookStats.sol`](https://github.com/Uniswap/v4-hooks-public/blob/0f731d5de0f4fd60b506b55754d5e6ff086eab7d/src/alf/interfaces/IHookStats.sol) — ERC-165 id `0x601b90d3` |
 | `v4-core` revision | [`46c6834698c48bc4a463a86d8420f4eb1d7f3b75`](https://github.com/Uniswap/v4-core/tree/46c6834698c48bc4a463a86d8420f4eb1d7f3b75) |
 | `POOLS_SLOT` / `LIQUIDITY_OFFSET` | [`StateLibrary.sol`](https://github.com/Uniswap/v4-core/blob/46c6834698c48bc4a463a86d8420f4eb1d7f3b75/src/libraries/StateLibrary.sol) `POOLS_SLOT = 6`, `LIQUIDITY_OFFSET = 3`; excerpt `docs/upstream/StateLibrary.excerpt.sol` |
-| ABI files | `src/abi/*.json` (canonical pins) + `src/abis.ts` (typed runtime view); selector equivalence enforced by `test/abiEquivalence.test.ts` |
+| ABI files | `packages/alfquote/src/abi/*.json` (canonical pins) + `packages/alfquote/src/abis.ts` (typed runtime view); selector equivalence enforced by `packages/alfquote/test/abiEquivalence.test.ts` |
 
 ### Deployed `Initialize` signature (discrepancy pin)
 
@@ -55,7 +55,7 @@ selectors; method validated by the ERC-165 known-answer test against
 Birth blocks located on 2026-09-07 by archive `eth_getCode` binary search over
 the block range `[20000000, head]` (predicate: runtime code present; ~25
 archive reads each). The one-off search code was removed after verification —
-the blocks are pinned constants in `src/addresses.ts`
+the blocks are pinned constants in `packages/alfquote/src/phase1.ts`
 (`POOL_MANAGER_BIRTH_BLOCK`, `FACTORY_BIRTH_BLOCK`,
 `FIXTURE_HOOK_BIRTH_BLOCK`).
 
@@ -112,7 +112,7 @@ with the deployed signature. `keccak256(abi.encode(poolKey))` computed
 off-chain from the decoded key equals the documented pool id above — the
 encoding is cross-validated against chain truth, and that equality is now
 permanently guarded by `test/pool.test.ts` and re-checked by every spike run
-against the pinned key in `src/addresses.ts` (`PINNED_POOL_KEY`).
+against the pinned key in `packages/alfquote/src/phase1.ts` (`PINNED_POOL_KEY`, served via the `alfquote/phase1` entry).
 
 ## Negative-liquidity proof (WO-3)
 

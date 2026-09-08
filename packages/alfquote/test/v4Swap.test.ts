@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import { decodeFunctionData } from "viem";
 import type { Hex } from "viem";
 import { universalRouterAbi } from "../src/abis.js";
-import { PINNED_POOL_KEY, USDC, USDT } from "../src/addresses.js";
+import { USDC, USDT } from "../src/addresses.js";
+import { PINNED_POOL_KEY } from "../src/phase1.js";
 import {
   DEFAULT_SLIPPAGE_BPS,
   SWAP_EXACT_IN_SINGLE,
@@ -15,8 +16,8 @@ import {
   amountOutMinimumFromQuote,
   decodeV4ExactInSingleCalldata,
   encodeV4ExactInSingleExecute,
+  quoteFillGapBps,
 } from "../src/v4Swap.js";
-import { quoteFillGapBps } from "../src/protectedSim.js";
 
 /** Independently ABI-encoded execute vector (not from encodeV4ExactInSingleExecute). */
 const GOLDEN_EXECUTE_CALLDATA = readFileSync(

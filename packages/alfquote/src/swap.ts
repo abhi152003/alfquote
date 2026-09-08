@@ -4,7 +4,7 @@
  */
 
 import type { Hex } from "viem";
-import type { PoolKey } from "./pool.js";
+import type { PoolKey, PoolId } from "./pool.js";
 import type { UrEncoding } from "./v4Swap.js";
 import type { SimulateRevert } from "./simulateSwap.js";
 
@@ -12,7 +12,7 @@ import type { SimulateRevert } from "./simulateSwap.js";
 export type SwapMode = "dry-run";
 
 export interface SwapInput {
-  readonly poolId: Hex;
+  readonly poolId: PoolId;
   readonly amountIn: bigint;
   readonly slippageBps: bigint;
   readonly mode: SwapMode;

@@ -108,9 +108,10 @@ scripts/tenderly/* ──import──▶ "alfquote" + scripts/lib/* + ./tenderly
 Runtime resolution: scripts run under tsx with `--env-file-if-exists=.env` (unchanged
 env contract — the user-owned `.env` is never touched). `import "alfquote"` resolves
 through the npm-workspace symlink to `dist/index.js`, so each root evidence script gets
-a `pre<script>` hook that builds the library first. Type resolution always uses
-`src/index.ts`, so `npm ci && npm run type-check` succeeds on a clean checkout before
-any build (matches the existing CI step order).
+a `pre<script>` hook that builds the library first. Type resolution originally used `src/index.ts` so type-check could run before
+build. **Superseded by the correction pass:** types now resolve to emitted
+declarations and the root `type-check` script builds the library first, so the
+same property holds with shippable manifests.
 
 Public result envelope (the contract every WO-10…15 command returns):
 
@@ -177,3 +178,18 @@ Live read-only (env already configured by the user; no `.env` changes):
 
 Manual: fresh-checkout simulation (`npm ci && npm run type-check && npm run build &&
 npm test && both gates`) validates the "installs from a clean checkout" requirement.
+
+
+## Correction pass (post-commit 02ae0bb, user-directed)
+
+User review of 02ae0bb requested seven corrections before WO-10..13 start; all applied:
+
+1. **Manifest type paths** — both packages' `exports["."].types` (and the CLI entry) now point at shipped declarations (`./dist/index.d.ts`, `./dist/phase1.d.ts`, `./dist/main.d.ts`). Root `type-check` builds the library first so `npm ci && npm run type-check` still works before any build.
+2. **Canonical JSON** — new `serialize.ts` (`toJsonValue`, `serializeResult`): bigint → decimal string, undefined-dropped semantics, throws on non-representable values; round-trip tests pin the encoding.
+3. **`PoolId`** — defined in `pool.ts`, used by `quote.ts`, `swap.ts`, `assessment.ts`, and the phase1 fixture constants.
+4. **Namespaced codes** — new `codes.ts`: `NamespacedCode` (`domain/reason`) types the `Warning`/`StructuredError`/`SkipReason` codes, `COMMON_ERROR_CODES` registry, `isNamespacedCode` validator.
+5. **`alfquote/phase1` sub-entry** — fixture constants (moved out of `addresses.ts`), the encoded-ALFHookData diagnostic, and the fixture-locked `runProtectedSimulation` (folded in from the deleted `protectedSim.ts`) live behind `./phase1`; the main entry stays pool-agnostic. `quoteFillGapBps` moved to `v4Swap.ts` (generic math, stays main).
+6. **Fixture-adapter ownership** — documented in `phase1.ts`: WO-12 owns generic quote services, WO-13 owns generic swap planning/simulation; the fixture adapter stays on the phase1 path until they land.
+7. **Per-owner surface tests** — `packages/alfquote/test/surface/` splits the allowlist by feature owner (`result`, `domains`, `protocol`, `barrel`); the barrel is `export *` per module plus one explicit `alfQuote.js` block, and `barrel.test.ts` computes the union dynamically so adding a module export does not conflict across work orders.
+
+Plus `docs/pins.md` path fixes (`packages/alfquote/...`, phase1 homes) and a README note for the subpath.

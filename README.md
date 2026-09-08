@@ -22,6 +22,8 @@ scripts/tenderly/    controlled-fork evidence tools (non-product path)
 scripts/lib/         env/argv wiring shared by the evidence scripts (not part of the library)
 ```
 
+Phase 1 fixture and diagnostic behavior — the pinned demo pool, the encoded-`ALFHookData` quote diagnostic, and the fixture-locked protected simulation — is served from the `alfquote/phase1` subpath so the main `alfquote` entry stays reusable and pool-agnostic.
+
 The library is side-effect free by contract and by gate: `scripts/check-package-boundaries.sh` fails if `packages/alfquote/src` ever reads the environment or argv, prints, exits, touches the filesystem, holds signers, broadcasts, or references the controlled-fork provider. Evidence scripts consume the library through the workspace (`import ... from "alfquote"`), so the boundary is real, and each entry script builds the library first.
 
 Requirements: Node.js >= 22.9 and npm. From a clean checkout:

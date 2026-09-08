@@ -69,6 +69,13 @@
 
 - [x] **Certification: Phase 3 complete. Proceeding to Final Completion.**
 
+## Correction Pass (user review of 02ae0bb)
+
+- [x] All seven user findings addressed (manifest types, canonical serializer, PoolId, namespaced codes, phase1 sub-entry, fixture-adapter ownership, per-owner surface tests) — see implementation-plan.md correction section
+- [x] docs/pins.md stale paths updated; README documents the `alfquote/phase1` subpath
+- [x] Verification: 124/124 tests, type-check/build, both gates, clean-checkout simulation (incl. `alfquote/phase1` runtime resolution), live spike (16/16, exit 0) and proof (PROCEED, exit 0)
+- [x] **Certification: correction pass complete; Round 3 review below.**
+
 ## Final Completion Check
 
 - [x] All phase certifications above are complete

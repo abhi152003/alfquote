@@ -3,15 +3,17 @@ import { formatUnits, isAddress } from "viem";
 import type { Address } from "viem";
 import {
   DEFAULT_SLIPPAGE_BPS,
-  FIXTURE_POOL_ID,
   maskRpcUrl,
   PERMIT2,
   POOL_MANAGER,
   quoteFillGapBps,
   redactKeys,
-  runProtectedSimulation,
   UNIVERSAL_ROUTER,
 } from "alfquote";
+import {
+  FIXTURE_POOL_ID,
+  runProtectedSimulation,
+} from "alfquote/phase1";
 import {
   createMainnetClient,
 } from "../lib/client.js";

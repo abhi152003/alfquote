@@ -49,6 +49,12 @@ const EXACT_IN_SINGLE_V211 = [
 
 export type UrEncoding = "v2" | "v2.1.1";
 
+/** Gap between a quote and an achieved fill, in basis points (0 when the fill met or beat the quote). */
+export function quoteFillGapBps(quote: bigint, actual: bigint): bigint {
+  if (quote === 0n || actual >= quote) return 0n;
+  return ((quote - actual) * 10_000n) / quote;
+}
+
 export function amountOutMinimumFromQuote(quote: bigint, slippageBps: bigint): bigint {
   if (slippageBps < 0n || slippageBps >= 10_000n) {
     throw new Error(`slippage bps must be in [0, 10000); got ${slippageBps}`);

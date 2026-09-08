@@ -4,11 +4,13 @@ import { derivePoolId, type PoolKey } from "../src/pool.js";
 import {
   ALLOWLISTED_FACTORY,
   POOL_MANAGER,
+  V4_HOOKS_PUBLIC_REVISION,
+} from "../src/addresses.js";
+import {
   FIXTURE_HOOK,
   FIXTURE_POOL_ID,
   PINNED_POOL_KEY,
-  V4_HOOKS_PUBLIC_REVISION,
-} from "../src/addresses.js";
+} from "../src/phase1.js";
 
 const syntheticKey: PoolKey = {
   currency0: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",

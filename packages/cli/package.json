@@ -13,7 +13,7 @@
   },
   "exports": {
     ".": {
-      "types": "./src/main.ts",
+      "types": "./dist/main.d.ts",
       "import": "./dist/main.js"
     }
   },

@@ -10,6 +10,9 @@ export interface PoolKey {
   hooks: Address;
 }
 
+/** Canonical 32-byte v4 pool identifier: `keccak256(abi.encode(key))`. */
+export type PoolId = Hex;
+
 /** v4-core PoolId.toId: keccak256(abi.encode(key)). */
 export function derivePoolId(key: PoolKey): Hex {
   const encoded = encodeAbiParameters(
