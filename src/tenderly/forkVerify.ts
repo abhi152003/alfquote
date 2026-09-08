@@ -4,6 +4,7 @@
  */
 
 import type { Address, Hex } from "viem";
+import { toHex } from "viem";
 import { derivePoolId, poolStateSlot, type PoolKey } from "../pool.js";
 import {
   FIXTURE_HOOK,
@@ -48,9 +49,12 @@ export interface VerifyDeps {
   mainnetStorage(contract: Address, slot: Hex, block: bigint): Promise<Hex>;
   forkBlockHash(block: bigint): Promise<Hex>;
   mainnetBlockHash(block: bigint): Promise<Hex>;
-  /** DualPool reserves/effective-liquidity AT the origin block, per chain. */
+  /** DualPool reserves/effective-liquidity AT the origin block, per chain (informational). */
   originStats(side: "fork" | "mainnet"): Promise<OriginStats>;
 }
+
+/** Consecutive `pools[poolId]` words compared at the origin block: Pool slot0, fee growth, liquidity, deltas. */
+export const POOL_STATE_WORD_COUNT = 6;
 
 export interface ForkVerification {
   chainId: number;
@@ -68,7 +72,8 @@ export interface ForkVerification {
   mainnetOriginBlockHash: Hex;
   originStatsFork: OriginStats;
   originStatsMainnet: OriginStats;
-  originStatsMatch: boolean;
+  /** All consecutive pool-state words match at the origin block (required). */
+  poolStateWordsMatch: boolean;
   bytecodeMatches: ReadonlyArray<{ name: string; address: Address; match: boolean }>;
   poolStateSlot: Hex;
   poolStateWordFork: Hex;
@@ -129,38 +134,33 @@ export async function verifyFork(
       match: equalCode(await deps.forkCode(address), await deps.mainnetCode(address, config.forkBlock)),
     })),
   );
-  const [poolStateWordFork, poolStateWordMainnet, forkOriginBlockHash, mainnetOriginBlockHash, originStatsFork, originStatsMainnet] =
+  const slotAt = (index: number): Hex => toHex(BigInt(slot) + BigInt(index), { size: 32 });
+  const [forkWords, mainnetWords, forkOriginBlockHash, mainnetOriginBlockHash, originStatsFork, originStatsMainnet] =
     await Promise.all([
-      deps.forkStorageAtOrigin(POOL_MANAGER, slot),
-      deps.mainnetStorage(POOL_MANAGER, slot, config.forkBlock),
+      Promise.all(Array.from({ length: POOL_STATE_WORD_COUNT }, (_, i) => deps.forkStorageAtOrigin(POOL_MANAGER, slotAt(i)))),
+      Promise.all(Array.from({ length: POOL_STATE_WORD_COUNT }, (_, i) => deps.mainnetStorage(POOL_MANAGER, slotAt(i), config.forkBlock))),
       deps.forkBlockHash(config.forkBlock),
       deps.mainnetBlockHash(config.forkBlock),
       deps.originStats("fork"),
       deps.originStats("mainnet"),
     ]);
+  const poolStateWordFork = forkWords[0] ?? ZERO_WORD;
+  const poolStateWordMainnet = mainnetWords[0] ?? ZERO_WORD;
   const poolStateMatch = poolStateWordFork === poolStateWordMainnet && poolStateWordFork !== ZERO_WORD;
+  const poolStateWordsMatch =
+    forkWords.length === POOL_STATE_WORD_COUNT &&
+    mainnetWords.length === POOL_STATE_WORD_COUNT &&
+    forkWords.every((word, i) => word === mainnetWords[i]);
   const validHash = (hash: Hex) => /^0x[0-9a-fA-F]{64}$/.test(hash);
-  const statsSide = (stats: OriginStats) => stats.reserves !== null && stats.effectiveLiquidity !== null;
-  const originStatsMatch =
-    statsSide(originStatsFork) &&
-    statsSide(originStatsMainnet) &&
-    originStatsFork.reserves !== null &&
-    originStatsMainnet.reserves !== null &&
-    originStatsFork.effectiveLiquidity !== null &&
-    originStatsMainnet.effectiveLiquidity !== null &&
-    originStatsFork.reserves[0] === originStatsMainnet.reserves[0] &&
-    originStatsFork.reserves[1] === originStatsMainnet.reserves[1] &&
-    originStatsFork.effectiveLiquidity[0] === originStatsMainnet.effectiveLiquidity[0] &&
-    originStatsFork.effectiveLiquidity[1] === originStatsMainnet.effectiveLiquidity[1];
   const bytecodeOk = bytecodeMatches.every((entry) => entry.match);
   const hashesOk = validHash(forkOriginBlockHash) && validHash(mainnetOriginBlockHash);
 
-  if (!bytecodeOk || !poolStateMatch || !originStatsMatch || !hashesOk) {
+  if (!bytecodeOk || !poolStateMatch || !poolStateWordsMatch || !hashesOk) {
     const problems: string[] = [];
     const failedContracts = bytecodeMatches.filter((entry) => !entry.match).map((entry) => entry.name);
     if (failedContracts.length > 0) problems.push(`bytecode mismatch: ${failedContracts.join(", ")}`);
     if (!poolStateMatch) problems.push(`pool state mismatch at block ${config.forkBlock}`);
-    if (!originStatsMatch) problems.push(`DualPool reserves/effective-liquidity differ between fork and mainnet at block ${config.forkBlock}`);
+    if (!poolStateWordsMatch) problems.push(`pool state words 0..${POOL_STATE_WORD_COUNT - 1} differ between fork and mainnet at block ${config.forkBlock}`);
     if (!hashesOk) problems.push("origin block hash missing on the fork or on mainnet");
     throw new ForkVerificationError(`Fork origin verification failed: ${problems.join("; ")}.`);
   }
@@ -174,7 +174,7 @@ export async function verifyFork(
     mainnetOriginBlockHash,
     originStatsFork,
     originStatsMainnet,
-    originStatsMatch,
+    poolStateWordsMatch,
     bytecodeMatches,
     poolStateSlot: slot,
     poolStateWordFork,

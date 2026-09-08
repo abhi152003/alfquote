@@ -17,7 +17,7 @@ export interface ForkEvidence {
   forkOriginBlockHash: string;
   mainnetOriginBlockHash: string;
   /** VEs re-seal blocks, so hashes are recorded identifiers, not an equality check. */
-  originStatsMatch: boolean;
+  poolStateWordsMatch: boolean;
   publicEndpoint: string;
   testAddress: string;
   poolId: string;
@@ -25,6 +25,13 @@ export interface ForkEvidence {
     bytecodeMatches: ForkVerification["bytecodeMatches"];
     poolStateMatch: boolean;
     poolIdOffline: string;
+    /**
+     * Informational: DualPool hook views derive from vault shares and block
+     * timestamps, and VE blocks are resealed with their own timestamps, so
+     * these values differ microscopically from mainnet at the same block
+     * number even when storage is identical. Origin is proven by bytecode and
+     * storage-word equality, not by these views.
+     */
     originStats: { fork: ForkVerification["originStatsFork"]; mainnet: ForkVerification["originStatsMainnet"] };
     adminProbeLatestBlock: ForkVerification["latestBlockInfo"];
   };
@@ -89,7 +96,7 @@ export function buildForkEvidence(args: {
     originCheck: args.verification.originCheck,
     forkOriginBlockHash: args.verification.forkOriginBlockHash,
     mainnetOriginBlockHash: args.verification.mainnetOriginBlockHash,
-    originStatsMatch: args.verification.originStatsMatch,
+    poolStateWordsMatch: args.verification.poolStateWordsMatch,
     publicEndpoint: maskTenderlyUrl(args.config.publicRpcUrl),
     testAddress: args.config.from,
     poolId: args.poolId,
@@ -137,7 +144,7 @@ export function validateReleaseEvidence(evidence: ForkEvidence): void {
   const failures: string[] = [];
   const validHash = (hash: string) => /^0x[0-9a-fA-F]{64}$/.test(hash);
   if (!validHash(evidence.forkOriginBlockHash) || !validHash(evidence.mainnetOriginBlockHash)) failures.push("origin block hash identifiers are missing");
-  if (!evidence.originStatsMatch) failures.push("DualPool reserves/effective-liquidity at the origin block do not match mainnet");
+  if (!evidence.poolStateWordsMatch) failures.push("pool storage words at the origin block do not match mainnet");
   if (!evidence.verification.poolStateMatch) failures.push("pool state does not match mainnet");
   if (!evidence.verification.bytecodeMatches.every((entry) => entry.match)) failures.push("contract bytecode fingerprint is incomplete");
   const fundingKinds = new Set(evidence.setup.funding.map((record) => record.kind));

@@ -55,12 +55,12 @@ describe("assertPinnedPoolIdentity", () => {
 });
 
 describe("verifyFork", () => {
-  it("verifies origin by state at the origin block and records both block hashes", async () => {
+  it("verifies origin by bytecode and pool storage words, recording both block hashes", async () => {
     const result = await verifyFork(loadTenderlyConfig(VALID), admin, matchingDeps());
     expect(result.originCheck).toBe("state-fingerprint-at-origin-block");
     // VEs re-seal blocks: the two hashes are recorded identifiers and are expected to differ.
     expect(result.forkOriginBlockHash).not.toBe(result.mainnetOriginBlockHash);
-    expect(result.originStatsMatch).toBe(true);
+    expect(result.poolStateWordsMatch).toBe(true);
     expect(result.bytecodeMatches).toHaveLength(FINGERPRINT_CONTRACTS.length);
     expect(result.poolStateMatch).toBe(true);
   });
@@ -71,14 +71,25 @@ describe("verifyFork", () => {
     ).rejects.toThrow(/origin block hash missing/);
   });
 
-  it("fails closed when DualPool reserves/effective-liquidity differ at the origin block", async () => {
+  it("fails closed when any consecutive pool storage word differs at the origin block", async () => {
     await expect(
       verifyFork(
         loadTenderlyConfig(VALID),
         admin,
-        matchingDeps({ originStats: async (side) => (side === "fork" ? { reserves: [1n, 1n], effectiveLiquidity: [1n, 1n] } : { reserves: STATS.reserves, effectiveLiquidity: STATS.effectiveLiquidity }) }),
+        matchingDeps({ forkStorageAtOrigin: async (_contract, slot) => (BigInt(slot) % 3n === 0n ? `0x${"11".repeat(32)}` as Hex : STATE_WORD) }),
       ),
-    ).rejects.toThrow(/reserves\/effective-liquidity differ/);
+    ).rejects.toThrow(/pool state words 0\.\.5 differ/);
+  });
+
+  it("records timestamp-derived DualPool views without requiring their equality", async () => {
+    // Hook views depend on block timestamps, which VEs re-seal; only storage must match.
+    const drift = { reserves: [1n, 1n], effectiveLiquidity: [1n, 1n] } as const;
+    const result = await verifyFork(
+      loadTenderlyConfig(VALID),
+      admin,
+      matchingDeps({ originStats: async (side) => (side === "fork" ? drift : { reserves: STATS.reserves, effectiveLiquidity: STATS.effectiveLiquidity }) }),
+    );
+    expect(result.poolStateWordsMatch).toBe(true);
   });
 
   it("fails closed on chain, bytecode, state, or head mismatch", async () => {

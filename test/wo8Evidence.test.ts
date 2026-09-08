@@ -22,7 +22,7 @@ function validEvidence(): ForkEvidence {
     originCheck: "state-fingerprint-at-origin-block",
     forkOriginBlockHash: HASH,
     mainnetOriginBlockHash: `0x${"cd".repeat(32)}`,
-    originStatsMatch: true,
+    poolStateWordsMatch: true,
     publicEndpoint: "https://virtual.mainnet.rpc.tenderly.co/***",
     testAddress: TEST,
     poolId: HASH,
@@ -91,13 +91,13 @@ describe("validateReleaseEvidence", () => {
     expect(() => validateReleaseEvidence(mismatch)).toThrow(/output measurements/);
   });
 
-  it("rejects missing origin identifiers and mismatched origin stats", () => {
+  it("rejects missing origin identifiers and mismatched pool storage words", () => {
     const noHash = validEvidence();
     noHash.forkOriginBlockHash = "0x";
     expect(() => validateReleaseEvidence(noHash)).toThrow(/origin block hash identifiers/);
-    const statsOff = validEvidence();
-    statsOff.originStatsMatch = false;
-    expect(() => validateReleaseEvidence(statsOff)).toThrow(/reserves\/effective-liquidity/);
+    const wordsOff = validEvidence();
+    wordsOff.poolStateWordsMatch = false;
+    expect(() => validateReleaseEvidence(wordsOff)).toThrow(/pool storage words/);
   });
 });
 
