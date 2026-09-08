@@ -16,7 +16,8 @@ export interface ForkEvidence {
   originCheck: ForkVerification["originCheck"];
   forkOriginBlockHash: string;
   mainnetOriginBlockHash: string;
-  blockHashMatch: boolean;
+  /** VEs re-seal blocks, so hashes are recorded identifiers, not an equality check. */
+  originStatsMatch: boolean;
   publicEndpoint: string;
   testAddress: string;
   poolId: string;
@@ -24,6 +25,7 @@ export interface ForkEvidence {
     bytecodeMatches: ForkVerification["bytecodeMatches"];
     poolStateMatch: boolean;
     poolIdOffline: string;
+    originStats: { fork: ForkVerification["originStatsFork"]; mainnet: ForkVerification["originStatsMainnet"] };
     adminProbeLatestBlock: ForkVerification["latestBlockInfo"];
   };
   setup: {
@@ -87,7 +89,7 @@ export function buildForkEvidence(args: {
     originCheck: args.verification.originCheck,
     forkOriginBlockHash: args.verification.forkOriginBlockHash,
     mainnetOriginBlockHash: args.verification.mainnetOriginBlockHash,
-    blockHashMatch: args.verification.blockHashMatch,
+    originStatsMatch: args.verification.originStatsMatch,
     publicEndpoint: maskTenderlyUrl(args.config.publicRpcUrl),
     testAddress: args.config.from,
     poolId: args.poolId,
@@ -95,6 +97,7 @@ export function buildForkEvidence(args: {
       bytecodeMatches: args.verification.bytecodeMatches,
       poolStateMatch: args.verification.poolStateMatch,
       poolIdOffline: args.verification.poolIdOffline,
+      originStats: { fork: args.verification.originStatsFork, mainnet: args.verification.originStatsMainnet },
       adminProbeLatestBlock: args.verification.latestBlockInfo,
     },
     setup: {
@@ -132,7 +135,9 @@ export function buildForkEvidence(args: {
 
 export function validateReleaseEvidence(evidence: ForkEvidence): void {
   const failures: string[] = [];
-  if (!evidence.blockHashMatch || evidence.forkOriginBlockHash !== evidence.mainnetOriginBlockHash) failures.push("origin block hashes do not match");
+  const validHash = (hash: string) => /^0x[0-9a-fA-F]{64}$/.test(hash);
+  if (!validHash(evidence.forkOriginBlockHash) || !validHash(evidence.mainnetOriginBlockHash)) failures.push("origin block hash identifiers are missing");
+  if (!evidence.originStatsMatch) failures.push("DualPool reserves/effective-liquidity at the origin block do not match mainnet");
   if (!evidence.verification.poolStateMatch) failures.push("pool state does not match mainnet");
   if (!evidence.verification.bytecodeMatches.every((entry) => entry.match)) failures.push("contract bytecode fingerprint is incomplete");
   const fundingKinds = new Set(evidence.setup.funding.map((record) => record.kind));

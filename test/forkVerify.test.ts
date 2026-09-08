@@ -23,6 +23,7 @@ const admin = { latestBlockInfo: { number: "0x18bb0e7" } } as unknown as Tenderl
 const CODE = "0x6080604052" as const;
 const STATE_WORD = "0x00000000000000000000000000000000000000000000000000000000deadbeef";
 const BLOCK_HASH = `0x${"ab".repeat(32)}` as Hex;
+const STATS = { reserves: [853335661n, 152976810n] as const, effectiveLiquidity: [853335661n, 152976810n] as const };
 
 function matchingDeps(overrides?: Partial<VerifyDeps>): VerifyDeps {
   return {
@@ -33,7 +34,8 @@ function matchingDeps(overrides?: Partial<VerifyDeps>): VerifyDeps {
     forkStorageAtOrigin: async () => STATE_WORD,
     mainnetStorage: async () => STATE_WORD,
     forkBlockHash: async () => BLOCK_HASH,
-    mainnetBlockHash: async () => BLOCK_HASH,
+    mainnetBlockHash: async () => `0x${"cd".repeat(32)}` as Hex,
+    originStats: async () => ({ reserves: STATS.reserves, effectiveLiquidity: STATS.effectiveLiquidity }),
     ...overrides,
   };
 }
@@ -53,18 +55,30 @@ describe("assertPinnedPoolIdentity", () => {
 });
 
 describe("verifyFork", () => {
-  it("requires matching block hash, bytecode, and pool state", async () => {
+  it("verifies origin by state at the origin block and records both block hashes", async () => {
     const result = await verifyFork(loadTenderlyConfig(VALID), admin, matchingDeps());
-    expect(result.originCheck).toBe("block-hash-and-state-fingerprint");
-    expect(result.blockHashMatch).toBe(true);
+    expect(result.originCheck).toBe("state-fingerprint-at-origin-block");
+    // VEs re-seal blocks: the two hashes are recorded identifiers and are expected to differ.
+    expect(result.forkOriginBlockHash).not.toBe(result.mainnetOriginBlockHash);
+    expect(result.originStatsMatch).toBe(true);
     expect(result.bytecodeMatches).toHaveLength(FINGERPRINT_CONTRACTS.length);
     expect(result.poolStateMatch).toBe(true);
   });
 
-  it("fails closed on an origin block-hash mismatch", async () => {
+  it("fails closed when an origin block hash identifier is missing", async () => {
     await expect(
-      verifyFork(loadTenderlyConfig(VALID), admin, matchingDeps({ forkBlockHash: async () => `0x${"cd".repeat(32)}` as Hex })),
-    ).rejects.toThrow(/origin block hash mismatch/);
+      verifyFork(loadTenderlyConfig(VALID), admin, matchingDeps({ forkBlockHash: async () => "0x" as Hex })),
+    ).rejects.toThrow(/origin block hash missing/);
+  });
+
+  it("fails closed when DualPool reserves/effective-liquidity differ at the origin block", async () => {
+    await expect(
+      verifyFork(
+        loadTenderlyConfig(VALID),
+        admin,
+        matchingDeps({ originStats: async (side) => (side === "fork" ? { reserves: [1n, 1n], effectiveLiquidity: [1n, 1n] } : { reserves: STATS.reserves, effectiveLiquidity: STATS.effectiveLiquidity }) }),
+      ),
+    ).rejects.toThrow(/reserves\/effective-liquidity differ/);
   });
 
   it("fails closed on chain, bytecode, state, or head mismatch", async () => {

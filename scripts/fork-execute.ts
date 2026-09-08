@@ -19,6 +19,7 @@ import {
   loadRunOptions,
   loadSpikeConfig,
   readErc20Info,
+  readHookStats,
   readMaxGas,
   RunOptionsError,
 } from "../src/index.js";
@@ -47,6 +48,9 @@ function exitConfigError(message: string): never {
   process.exit(1);
 }
 
+/** Configured endpoints, published as soon as they parse so even top-level crashes redact them. */
+let activeTenderlyUrls: readonly string[] = [];
+
 async function run(): Promise<void> {
   const diagnostic = process.env[DIAGNOSTIC_ENV]?.trim() === "1";
   const slippageBps = BigInt(process.env[SLIPPAGE_ENV]?.trim() || DEFAULT_SLIPPAGE_BPS.toString());
@@ -59,9 +63,21 @@ async function run(): Promise<void> {
     if (error instanceof SpikeConfigError || error instanceof TenderlyConfigError || error instanceof RunOptionsError) exitConfigError(error.message);
     throw error;
   }
-  const tenderlyUrls = [tenderly.publicRpcUrl, tenderly.adminRpcUrl];
+  activeTenderlyUrls = [tenderly.publicRpcUrl, tenderly.adminRpcUrl];
+  const tenderlyUrls = activeTenderlyUrls;
   const safeError = (error: unknown) => redactRpcSecrets(error instanceof Error ? error.message : String(error), tenderlyUrls);
   if (slippageBps !== DEFAULT_SLIPPAGE_BPS && !diagnostic) exitConfigError(`Non-default slippage ${slippageBps} bps requires ALFQUOTE_DIAGNOSTIC=1.`);
+  if (!diagnostic) {
+    // Release runs need the public evidence link up front: validation happens
+    // after the swap, and a missing link would waste the one-shot fresh run.
+    const link = process.env[EVIDENCE_URL_ENV]?.trim();
+    if (!link) exitConfigError(`${EVIDENCE_URL_ENV} is not set. The release evidence requires a public/read-only Tenderly link (the Virtual Environment dashboard URL works).`);
+    try {
+      if (new URL(link).protocol !== "https:") exitConfigError(`${EVIDENCE_URL_ENV} must be an https URL.`);
+    } catch {
+      exitConfigError(`${EVIDENCE_URL_ENV} is not a valid URL.`);
+    }
+  }
 
   console.log("ALFQuote controlled-fork execution proof (Tenderly Virtual Environment)");
   console.log(`  public endpoint: ${maskTenderlyUrl(tenderly.publicRpcUrl)}`);
@@ -103,6 +119,11 @@ async function run(): Promise<void> {
         const value = await mainnet.getBlock({ blockNumber: block });
         if (!value.hash) throw new ForkVerificationError(`Mainnet block ${block} has no hash.`);
         return value.hash;
+      },
+      originStats: async (side) => {
+        const client = side === "fork" ? fork : mainnet;
+        const stats = await readHookStats(client, FIXTURE_HOOK, PINNED_POOL_KEY, tenderly.forkBlock);
+        return { reserves: stats.reserves, effectiveLiquidity: stats.effectiveLiquidity };
       },
     });
   } catch (error) {
@@ -178,7 +199,7 @@ async function run(): Promise<void> {
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   run().catch((error: unknown) => {
-    console.error(`Fork execution failed: ${redactRpcSecrets(error instanceof Error ? error.message : String(error))}`);
+    console.error(`Fork execution failed: ${redactRpcSecrets(error instanceof Error ? error.message : String(error), activeTenderlyUrls)}`);
     process.exit(1);
   });
 }

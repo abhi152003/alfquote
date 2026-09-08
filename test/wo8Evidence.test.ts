@@ -19,10 +19,10 @@ function validEvidence(): ForkEvidence {
     forkBlock: 1n,
     forkChainId: 9991,
     forkHeadAtVerification: 1n,
-    originCheck: "block-hash-and-state-fingerprint",
+    originCheck: "state-fingerprint-at-origin-block",
     forkOriginBlockHash: HASH,
-    mainnetOriginBlockHash: HASH,
-    blockHashMatch: true,
+    mainnetOriginBlockHash: `0x${"cd".repeat(32)}`,
+    originStatsMatch: true,
     publicEndpoint: "https://virtual.mainnet.rpc.tenderly.co/***",
     testAddress: TEST,
     poolId: HASH,
@@ -30,6 +30,10 @@ function validEvidence(): ForkEvidence {
       bytecodeMatches: [{ name: "PoolManager", address: POOL_MANAGER, match: true }],
       poolStateMatch: true,
       poolIdOffline: HASH,
+      originStats: {
+        fork: { reserves: [1n, 2n], effectiveLiquidity: [1n, 2n] },
+        mainnet: { reserves: [1n, 2n], effectiveLiquidity: [1n, 2n] },
+      },
       adminProbeLatestBlock: {},
     },
     setup: {
@@ -85,6 +89,15 @@ describe("validateReleaseEvidence", () => {
     const mismatch = validEvidence();
     mismatch.swap.transfersToUserFromLogs = 1n;
     expect(() => validateReleaseEvidence(mismatch)).toThrow(/output measurements/);
+  });
+
+  it("rejects missing origin identifiers and mismatched origin stats", () => {
+    const noHash = validEvidence();
+    noHash.forkOriginBlockHash = "0x";
+    expect(() => validateReleaseEvidence(noHash)).toThrow(/origin block hash identifiers/);
+    const statsOff = validEvidence();
+    statsOff.originStatsMatch = false;
+    expect(() => validateReleaseEvidence(statsOff)).toThrow(/reserves\/effective-liquidity/);
   });
 });
 

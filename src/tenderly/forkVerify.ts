@@ -34,6 +34,11 @@ export const FINGERPRINT_CONTRACTS: ReadonlyArray<{ name: string; address: Addre
   { name: "USDT", address: USDT },
 ];
 
+export interface OriginStats {
+  reserves: readonly [bigint, bigint] | null;
+  effectiveLiquidity: readonly [bigint, bigint] | null;
+}
+
 export interface VerifyDeps {
   forkChainId(): Promise<number>;
   forkHead(): Promise<bigint>;
@@ -43,16 +48,27 @@ export interface VerifyDeps {
   mainnetStorage(contract: Address, slot: Hex, block: bigint): Promise<Hex>;
   forkBlockHash(block: bigint): Promise<Hex>;
   mainnetBlockHash(block: bigint): Promise<Hex>;
+  /** DualPool reserves/effective-liquidity AT the origin block, per chain. */
+  originStats(side: "fork" | "mainnet"): Promise<OriginStats>;
 }
 
 export interface ForkVerification {
   chainId: number;
   forkHead: bigint;
   originBlock: bigint;
-  originCheck: "block-hash-and-state-fingerprint";
+  /**
+   * Virtual Environments re-seal blocks with their own hashes (different chain
+   * id => different headers), so fork and mainnet block hashes at the origin
+   * block can never be equal. Origin is proven by state: bytecode, the pool
+   * state word, and DualPool reserves/effective-liquidity all compared AT the
+   * origin block. Both block hashes are still recorded as identifiers.
+   */
+  originCheck: "state-fingerprint-at-origin-block";
   forkOriginBlockHash: Hex;
   mainnetOriginBlockHash: Hex;
-  blockHashMatch: boolean;
+  originStatsFork: OriginStats;
+  originStatsMainnet: OriginStats;
+  originStatsMatch: boolean;
   bytecodeMatches: ReadonlyArray<{ name: string; address: Address; match: boolean }>;
   poolStateSlot: Hex;
   poolStateWordFork: Hex;
@@ -113,27 +129,39 @@ export async function verifyFork(
       match: equalCode(await deps.forkCode(address), await deps.mainnetCode(address, config.forkBlock)),
     })),
   );
-  const [poolStateWordFork, poolStateWordMainnet, forkOriginBlockHash, mainnetOriginBlockHash] =
+  const [poolStateWordFork, poolStateWordMainnet, forkOriginBlockHash, mainnetOriginBlockHash, originStatsFork, originStatsMainnet] =
     await Promise.all([
       deps.forkStorageAtOrigin(POOL_MANAGER, slot),
       deps.mainnetStorage(POOL_MANAGER, slot, config.forkBlock),
       deps.forkBlockHash(config.forkBlock),
       deps.mainnetBlockHash(config.forkBlock),
+      deps.originStats("fork"),
+      deps.originStats("mainnet"),
     ]);
   const poolStateMatch = poolStateWordFork === poolStateWordMainnet && poolStateWordFork !== ZERO_WORD;
-  const blockHashMatch = forkOriginBlockHash === mainnetOriginBlockHash;
+  const validHash = (hash: Hex) => /^0x[0-9a-fA-F]{64}$/.test(hash);
+  const statsSide = (stats: OriginStats) => stats.reserves !== null && stats.effectiveLiquidity !== null;
+  const originStatsMatch =
+    statsSide(originStatsFork) &&
+    statsSide(originStatsMainnet) &&
+    originStatsFork.reserves !== null &&
+    originStatsMainnet.reserves !== null &&
+    originStatsFork.effectiveLiquidity !== null &&
+    originStatsMainnet.effectiveLiquidity !== null &&
+    originStatsFork.reserves[0] === originStatsMainnet.reserves[0] &&
+    originStatsFork.reserves[1] === originStatsMainnet.reserves[1] &&
+    originStatsFork.effectiveLiquidity[0] === originStatsMainnet.effectiveLiquidity[0] &&
+    originStatsFork.effectiveLiquidity[1] === originStatsMainnet.effectiveLiquidity[1];
   const bytecodeOk = bytecodeMatches.every((entry) => entry.match);
+  const hashesOk = validHash(forkOriginBlockHash) && validHash(mainnetOriginBlockHash);
 
-  if (!bytecodeOk || !poolStateMatch || !blockHashMatch) {
+  if (!bytecodeOk || !poolStateMatch || !originStatsMatch || !hashesOk) {
     const problems: string[] = [];
     const failedContracts = bytecodeMatches.filter((entry) => !entry.match).map((entry) => entry.name);
     if (failedContracts.length > 0) problems.push(`bytecode mismatch: ${failedContracts.join(", ")}`);
     if (!poolStateMatch) problems.push(`pool state mismatch at block ${config.forkBlock}`);
-    if (!blockHashMatch) {
-      problems.push(
-        `origin block hash mismatch: fork ${forkOriginBlockHash}, mainnet ${mainnetOriginBlockHash}`,
-      );
-    }
+    if (!originStatsMatch) problems.push(`DualPool reserves/effective-liquidity differ between fork and mainnet at block ${config.forkBlock}`);
+    if (!hashesOk) problems.push("origin block hash missing on the fork or on mainnet");
     throw new ForkVerificationError(`Fork origin verification failed: ${problems.join("; ")}.`);
   }
 
@@ -141,10 +169,12 @@ export async function verifyFork(
     chainId,
     forkHead,
     originBlock: config.forkBlock,
-    originCheck: "block-hash-and-state-fingerprint",
+    originCheck: "state-fingerprint-at-origin-block",
     forkOriginBlockHash,
     mainnetOriginBlockHash,
-    blockHashMatch,
+    originStatsFork,
+    originStatsMainnet,
+    originStatsMatch,
     bytecodeMatches,
     poolStateSlot: slot,
     poolStateWordFork,
