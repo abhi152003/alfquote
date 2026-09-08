@@ -1,6 +1,7 @@
 /** Versioned command-result envelopes shared by every ALFQuote command surface. */
 
 import type { NamespacedCode } from "./codes.js";
+import { redactRpcSecrets } from "./output.js";
 
 /**
  * Schema version of the result envelope. Bump on any breaking change to the
@@ -14,6 +15,7 @@ export type ResultStatus = "ok" | "skip" | "error";
 
 /** Which chain state a result was computed against. */
 export interface ChainBlockContext {
+  /** EIP-155 chain id; `0` means unknown (the chain probe itself failed). */
   readonly chainId: number;
   /** Pinned block number, or `null` when the read was latest-state. */
   readonly blockNumber: bigint | null;
@@ -73,6 +75,15 @@ export type CommandResult<TData, TInput extends object> =
   | OkResult<TData, TInput>
   | SkipResult<TInput>
   | ErrorResult<TInput>;
+
+/**
+ * Envelope-safe message for an unknown thrown error. Transport libraries
+ * embed full RPC URLs (with credentials) in their messages, so every catch
+ * site must route through this instead of using `error.message` directly.
+ */
+export function errorMessage(error: unknown): string {
+  return redactRpcSecrets(error instanceof Error ? error.message : String(error));
+}
 
 export function okResult<TData, TInput extends object>(
   command: CommandName,

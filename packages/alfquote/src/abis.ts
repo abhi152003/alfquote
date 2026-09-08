@@ -1,4 +1,5 @@
 import { parseAbi } from "viem";
+import type { AbiEvent } from "viem";
 
 /**
  * Typed runtime view of the pinned ABIs: viem's inference needs literal types,
@@ -42,6 +43,12 @@ export const poolManagerAbi = parseAbi([
   "event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)",
   "function extsload(bytes32 slot) view returns (bytes32)",
 ]);
+
+const initializeEntry = poolManagerAbi.find(
+  (entry) => entry.type === "event" && entry.name === "Initialize",
+);
+/** The `Initialize` event isolated for typed log decoding in pool discovery. */
+export const poolManagerInitializeEvent: AbiEvent = initializeEntry as AbiEvent;
 
 export const erc20MetadataAbi = parseAbi([
   "function decimals() view returns (uint8)",

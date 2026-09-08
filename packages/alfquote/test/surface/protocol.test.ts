@@ -10,7 +10,7 @@ import * as allowances from "../../src/allowances.js";
 import * as proofDecision from "../../src/proofDecision.js";
 
 describe("surface: abis.js", () => {
-  it("exports exactly the ten pinned ABIs", () => {
+  it("exports exactly the ten pinned ABIs plus the Initialize event", () => {
     expect(Object.keys(abis).sort()).toEqual([
       "alfHookAbi",
       "dualPoolHookViewsAbi",
@@ -21,6 +21,7 @@ describe("surface: abis.js", () => {
       "hookStatsAbi",
       "permit2Abi",
       "poolManagerAbi",
+      "poolManagerInitializeEvent",
       "universalRouterAbi",
     ]);
   });

@@ -137,3 +137,13 @@ Also verified: `docs/fork-evidence.json` zero diff; pins.md exactly 3 path lines
 - **Verdict:** APPROVED
 
 ---
+## Final disposition
+
+Orchestrator review of correction commit faa9bdc: **WO-9 approved.** All prior
+blockers confirmed resolved (shipped declaration types, phase1 subpath, canonical
+bigint serialization, public PoolId, namespaced codes, fixture isolation,
+pool-agnostic main entry, per-owner export tests, documented WO-12/WO-13
+ownership, refreshed docs paths, clean Git tree). WO-9 marked **completed**;
+WO-10 through WO-13 cleared to start concurrently with the ownership split
+above (discovery / assessment / quote / swap services, codes, and surface
+tests; `alfquote/phase1` is a compatibility adapter only).

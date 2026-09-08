@@ -21,6 +21,7 @@ describe("surface: result.js", () => {
   it("exports exactly the pinned constructors and guards", () => {
     expect(Object.keys(result).sort()).toEqual([
       "RESULT_SCHEMA_VERSION",
+      "errorMessage",
       "errorResult",
       "isErrorResult",
       "isOkResult",
