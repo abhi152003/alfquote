@@ -1,11 +1,6 @@
 /**
- * Fork identity proof (WO-7): the Virtual Environment must be a fork of
+ * Fork identity proof (WO-8): the Virtual Environment must be a fork of
  * Ethereum mainnet at the explicitly recorded block before anything mutates it.
- *
- * Both sides are compared AT the origin block — bytecode and the pinned pool's
- * state slot — so the proof stays valid after the fork's own transactions move
- * latest state. The head comparison only labels whether the fork was still
- * pristine when checked.
  */
 
 import type { Address, Hex } from "viem";
@@ -30,7 +25,6 @@ export class ForkVerificationError extends Error {
   }
 }
 
-/** Contracts whose fork bytecode must equal mainnet bytecode at the origin block. */
 export const FINGERPRINT_CONTRACTS: ReadonlyArray<{ name: string; address: Address }> = [
   { name: "PoolManager", address: POOL_MANAGER },
   { name: "DualPool fixture hook", address: FIXTURE_HOOK },
@@ -45,17 +39,20 @@ export interface VerifyDeps {
   forkHead(): Promise<bigint>;
   forkCode(address: Address): Promise<Hex | undefined>;
   mainnetCode(address: Address, block: bigint): Promise<Hex | undefined>;
-  /** Fork storage AT the origin block (the Virtual Environment serves its own history). */
   forkStorageAtOrigin(contract: Address, slot: Hex): Promise<Hex>;
   mainnetStorage(contract: Address, slot: Hex, block: bigint): Promise<Hex>;
+  forkBlockHash(block: bigint): Promise<Hex>;
+  mainnetBlockHash(block: bigint): Promise<Hex>;
 }
 
 export interface ForkVerification {
   chainId: number;
   forkHead: bigint;
   originBlock: bigint;
-  /** How the origin was confirmed: exact head match (pristine fork), or state comparison at the origin block. */
-  originCheck: "head-equals-origin" | "state-fingerprint-at-origin-block";
+  originCheck: "block-hash-and-state-fingerprint";
+  forkOriginBlockHash: Hex;
+  mainnetOriginBlockHash: Hex;
+  blockHashMatch: boolean;
   bytecodeMatches: ReadonlyArray<{ name: string; address: Address; match: boolean }>;
   poolStateSlot: Hex;
   poolStateWordFork: Hex;
@@ -75,7 +72,6 @@ function equalCode(fork: Hex | undefined, mainnet: Hex | undefined): boolean {
   return hasCode(fork) && hasCode(mainnet) && fork === mainnet;
 }
 
-/** Guard: mainnet archive reads must not be served by the fork itself. */
 export function assertDistinctEndpoints(config: TenderlyConfig, mainnetRpcUrl: string): void {
   if (sameHost(config.publicRpcUrl, mainnetRpcUrl) || sameHost(config.adminRpcUrl, mainnetRpcUrl)) {
     throw new ForkVerificationError(
@@ -84,7 +80,6 @@ export function assertDistinctEndpoints(config: TenderlyConfig, mainnetRpcUrl: s
   }
 }
 
-/** Offline identity re-check of the pinned pool key against the documented pool id. */
 export function assertPinnedPoolIdentity(key: PoolKey = PINNED_POOL_KEY, expected: Hex = FIXTURE_POOL_ID): Hex {
   const derived = derivePoolId(key);
   if (derived !== expected) {
@@ -103,6 +98,11 @@ export async function verifyFork(
     throw new ForkVerificationError(`Fork chain id ${chainId} != configured ${config.chainId}.`);
   }
   const forkHead = await deps.forkHead();
+  if (forkHead < config.forkBlock) {
+    throw new ForkVerificationError(
+      `Fork head ${forkHead} is below configured origin block ${config.forkBlock}.`,
+    );
+  }
   const slot = poolStateSlot(FIXTURE_POOL_ID);
   const poolIdOffline = assertPinnedPoolIdentity();
 
@@ -113,27 +113,25 @@ export async function verifyFork(
       match: equalCode(await deps.forkCode(address), await deps.mainnetCode(address, config.forkBlock)),
     })),
   );
-  const [poolStateWordFork, poolStateWordMainnet] = await Promise.all([
-    deps.forkStorageAtOrigin(POOL_MANAGER, slot),
-    deps.mainnetStorage(POOL_MANAGER, slot, config.forkBlock),
-  ]);
+  const [poolStateWordFork, poolStateWordMainnet, forkOriginBlockHash, mainnetOriginBlockHash] =
+    await Promise.all([
+      deps.forkStorageAtOrigin(POOL_MANAGER, slot),
+      deps.mainnetStorage(POOL_MANAGER, slot, config.forkBlock),
+      deps.forkBlockHash(config.forkBlock),
+      deps.mainnetBlockHash(config.forkBlock),
+    ]);
   const poolStateMatch = poolStateWordFork === poolStateWordMainnet && poolStateWordFork !== ZERO_WORD;
-
-  const originCheck: ForkVerification["originCheck"] =
-    forkHead === config.forkBlock ? "head-equals-origin" : "state-fingerprint-at-origin-block";
+  const blockHashMatch = forkOriginBlockHash === mainnetOriginBlockHash;
   const bytecodeOk = bytecodeMatches.every((entry) => entry.match);
-  const originOk = bytecodeOk && poolStateMatch && forkHead >= config.forkBlock;
 
-  if (!originOk) {
-    const failedContracts = bytecodeMatches.filter((entry) => !entry.match).map((entry) => entry.name);
+  if (!bytecodeOk || !poolStateMatch || !blockHashMatch) {
     const problems: string[] = [];
+    const failedContracts = bytecodeMatches.filter((entry) => !entry.match).map((entry) => entry.name);
     if (failedContracts.length > 0) problems.push(`bytecode mismatch: ${failedContracts.join(", ")}`);
-    if (!poolStateMatch) {
-      problems.push(`pool state slot ${slot} differs between fork and mainnet at block ${config.forkBlock}`);
-    }
-    if (forkHead < config.forkBlock) {
+    if (!poolStateMatch) problems.push(`pool state mismatch at block ${config.forkBlock}`);
+    if (!blockHashMatch) {
       problems.push(
-        `fork head ${forkHead} is below the configured origin block ${config.forkBlock}; set TENDERLY_FORK_BLOCK to the head at fork time`,
+        `origin block hash mismatch: fork ${forkOriginBlockHash}, mainnet ${mainnetOriginBlockHash}`,
       );
     }
     throw new ForkVerificationError(`Fork origin verification failed: ${problems.join("; ")}.`);
@@ -143,7 +141,10 @@ export async function verifyFork(
     chainId,
     forkHead,
     originBlock: config.forkBlock,
-    originCheck,
+    originCheck: "block-hash-and-state-fingerprint",
+    forkOriginBlockHash,
+    mainnetOriginBlockHash,
+    blockHashMatch,
     bytecodeMatches,
     poolStateSlot: slot,
     poolStateWordFork,

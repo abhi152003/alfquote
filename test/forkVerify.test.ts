@@ -19,11 +19,10 @@ const VALID: Record<string, string> = {
   TENDERLY_CHAIN_ID: "73571",
   ALFQUOTE_TENDERLY_FROM: "0x1234567890abcdef1234567890abcdef12345678",
 };
-
 const admin = { latestBlockInfo: { number: "0x18bb0e7" } } as unknown as TenderlyAdmin;
-
 const CODE = "0x6080604052" as const;
 const STATE_WORD = "0x00000000000000000000000000000000000000000000000000000000deadbeef";
+const BLOCK_HASH = `0x${"ab".repeat(32)}` as Hex;
 
 function matchingDeps(overrides?: Partial<VerifyDeps>): VerifyDeps {
   return {
@@ -33,62 +32,46 @@ function matchingDeps(overrides?: Partial<VerifyDeps>): VerifyDeps {
     mainnetCode: async () => CODE,
     forkStorageAtOrigin: async () => STATE_WORD,
     mainnetStorage: async () => STATE_WORD,
+    forkBlockHash: async () => BLOCK_HASH,
+    mainnetBlockHash: async () => BLOCK_HASH,
     ...overrides,
   };
 }
 
 describe("assertDistinctEndpoints", () => {
-  it("refuses mainnet archive reads served by the fork host", () => {
+  it("refuses mainnet reads served by the fork host", () => {
     const config = loadTenderlyConfig(VALID);
-    expect(() =>
-      assertDistinctEndpoints(config, "https://virtual.mainnet.rpc.tenderly.co/other"),
-    ).toThrow(ForkVerificationError);
+    expect(() => assertDistinctEndpoints(config, "https://virtual.mainnet.rpc.tenderly.co/other")).toThrow(ForkVerificationError);
     expect(() => assertDistinctEndpoints(config, "https://eth-mainnet.g.alchemy.com/v2/k")).not.toThrow();
   });
 });
 
 describe("assertPinnedPoolIdentity", () => {
-  it("offline derivation still matches the documented pool id", () => {
+  it("matches the documented pool id", () => {
     expect(assertPinnedPoolIdentity(PINNED_POOL_KEY, FIXTURE_POOL_ID)).toBe(FIXTURE_POOL_ID);
   });
 });
 
 describe("verifyFork", () => {
-  it("confirms origin by exact head match when all fingerprints agree", async () => {
-    const config = loadTenderlyConfig(VALID);
-    const result = await verifyFork(config, admin, matchingDeps());
-    expect(result.originCheck).toBe("head-equals-origin");
+  it("requires matching block hash, bytecode, and pool state", async () => {
+    const result = await verifyFork(loadTenderlyConfig(VALID), admin, matchingDeps());
+    expect(result.originCheck).toBe("block-hash-and-state-fingerprint");
+    expect(result.blockHashMatch).toBe(true);
     expect(result.bytecodeMatches).toHaveLength(FINGERPRINT_CONTRACTS.length);
-    expect(result.bytecodeMatches.every((entry) => entry.match)).toBe(true);
     expect(result.poolStateMatch).toBe(true);
   });
 
-  it("confirms origin by state at the origin block when the fork has mined blocks", async () => {
-    const config = loadTenderlyConfig(VALID);
-    const result = await verifyFork(config, admin, matchingDeps({ forkHead: async () => 25926206n }));
-    expect(result.originCheck).toBe("state-fingerprint-at-origin-block");
-  });
-
-  it("fails closed on chain-id mismatch", async () => {
-    const config = loadTenderlyConfig(VALID);
-    await expect(verifyFork(config, admin, matchingDeps({ forkChainId: async () => 1 }))).rejects.toThrow(
-      /chain id 1 != configured 73571/,
-    );
-  });
-
-  it("fails closed naming mismatched bytecode and pool state", async () => {
-    const config = loadTenderlyConfig(VALID);
-    const deps = matchingDeps({
-      forkCode: async (address) => (address === POOL_MANAGER ? "0x6001" : CODE),
-      forkStorageAtOrigin: async () => `0x${"11".repeat(32)}` as Hex,
-    });
-    await expect(verifyFork(config, admin, deps)).rejects.toThrow(/bytecode mismatch: PoolManager/);
+  it("fails closed on an origin block-hash mismatch", async () => {
     await expect(
-      verifyFork(
-        config,
-        admin,
-        matchingDeps({ forkHead: async () => 25926100n }),
-      ),
-    ).rejects.toThrow(/below the configured origin block/);
+      verifyFork(loadTenderlyConfig(VALID), admin, matchingDeps({ forkBlockHash: async () => `0x${"cd".repeat(32)}` as Hex })),
+    ).rejects.toThrow(/origin block hash mismatch/);
+  });
+
+  it("fails closed on chain, bytecode, state, or head mismatch", async () => {
+    const config = loadTenderlyConfig(VALID);
+    await expect(verifyFork(config, admin, matchingDeps({ forkChainId: async () => 1 }))).rejects.toThrow(/chain id/);
+    await expect(verifyFork(config, admin, matchingDeps({ forkCode: async (address) => address === POOL_MANAGER ? "0x6001" : CODE }))).rejects.toThrow(/bytecode mismatch/);
+    await expect(verifyFork(config, admin, matchingDeps({ forkStorageAtOrigin: async () => `0x${"11".repeat(32)}` as Hex }))).rejects.toThrow(/pool state mismatch/);
+    await expect(verifyFork(config, admin, matchingDeps({ forkHead: async () => 1n }))).rejects.toThrow(/below configured origin/);
   });
 });
