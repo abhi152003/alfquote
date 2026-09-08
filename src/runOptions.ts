@@ -32,12 +32,13 @@ function parsePositiveInt(raw: string, label: string): bigint {
 export function loadRunOptions(
   env: Record<string, string | undefined>,
   argv: readonly string[] = [],
+  defaultAmountUsdc: bigint = DEFAULT_AMOUNT_USDC,
 ): RunOptions {
   const amountRaw = flagValue(argv, "--amount") ?? env[AMOUNT_ENV_VAR]?.trim();
   const blockRaw = flagValue(argv, "--block") ?? env[BLOCK_ENV_VAR]?.trim();
   const amountUsdc =
     amountRaw === undefined || amountRaw === ""
-      ? DEFAULT_AMOUNT_USDC
+      ? defaultAmountUsdc
       : parsePositiveInt(amountRaw, "amount");
   const blockNumber =
     blockRaw === undefined || blockRaw === "" ? undefined : parsePositiveInt(blockRaw, "block");

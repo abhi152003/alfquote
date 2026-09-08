@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Exits 0 only when spike, proof, and the 1 USDC protected simulate succeed.
+# Exits 0 only when offline checks, mainnet read-only evidence (spike + proof),
+# and the controlled-fork protected swap (`npm run fork`, 1 USDC at 50 bps) pass.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 npm ci
@@ -9,5 +10,5 @@ npm test
 bash scripts/check-no-send.sh
 npm run spike
 npm run proof
-npm run simulate -- --amount 1
-echo "Phase 1 release passed."
+npm run fork
+echo "Phase 1 release passed (mainnet read-only + controlled-fork execution)."

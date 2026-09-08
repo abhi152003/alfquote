@@ -11,3 +11,5 @@ coverage/
 .turbo/
 .nx/
 *.tsbuildinfo
+fork-evidence-diagnostic.json
+fork-evidence-failed.json

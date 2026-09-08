@@ -18,6 +18,8 @@
     "simulate": "node --import tsx --env-file-if-exists=.env scripts/simulate-swap.ts",
     "simulate:diagnostic": "ALFQUOTE_DIAGNOSTIC=1 node --import tsx --env-file-if-exists=.env scripts/simulate-swap.ts",
     "sweep": "node --import tsx --env-file-if-exists=.env scripts/sweep-sizes.ts",
+    "fork": "node --import tsx --env-file-if-exists=.env scripts/fork-execute.ts",
+    "fork:diagnostic": "ALFQUOTE_DIAGNOSTIC=1 node --import tsx --env-file-if-exists=.env scripts/fork-execute.ts",
     "check-no-send": "bash scripts/check-no-send.sh",
     "release": "bash scripts/release.sh"
   },

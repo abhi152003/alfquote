@@ -277,18 +277,128 @@ calldata=0x3593564c0000000000000000000000000000000000000000000000000000000000000
 
 Replay of block `25926196` needs an archive-capable RPC. Latest-state runs omit `--block` / `ALFQUOTE_BLOCK`.
 
+## Controlled-fork execution proof (WO-7)
+
+WO-6 closed with **REVISE** because the read-only mainnet wallet had no Permit2
+approvals. WO-7 completed the protected swap on a Tenderly Virtual Environment
+(Virtual TestNet) fork of Ethereum mainnet, with every injected prerequisite and
+every setup transaction disclosed separately from the tested swap. This is
+**controlled-fork execution evidence, not an Ethereum mainnet transaction.**
+
+### Environment and origin verification
+
+| Field | Value |
+| --- | --- |
+| Environment | Tenderly Virtual Environment, fork of Ethereum mainnet (EU endpoint; URLs redacted — the Admin RPC URL is a secret) |
+| Fork origin block | `25932005` |
+| Chain id | `9991` (unique, not 1; asserted fail-closed) |
+| Test address | `0x5bc6f16Ca189D3C8d3Fbaf367611fB04a0B7b309` (dedicated; never used to sign on mainnet) |
+| Admin endpoint proof | `evm_getLatest` probe + chain-id match before any mutation (fail closed) |
+| Origin check | `state-fingerprint-at-origin-block`: fork history at `25932005` vs mainnet archive — bytecode equal for PoolManager, fixture hook, Universal Router v2, Permit2, USDC, USDT; `pools[poolId]` state word equal; offline `derivePoolId(PINNED_POOL_KEY)` equals the documented pool id |
+| Mainnet replay at `25932005` | `npm run proof -- --block 25932005`: vanilla `L=0`, `isLive`/`livePools` true, `maxGas=800000`, reserves = effective = `731.216697` USDC / `275.232789` USDT, quote 100 USDC → `100.012703` USDT, **PROCEED** |
+
+### Setup disclosure (separate from the tested swap)
+
+- **Funding (injected):** the test address was pre-funded through the Tenderly
+  dashboard (faucet) before the first run — first-run observed balances `1000
+  ETH` and `99999000000` raw USDC (~99,999 USDC); later runs observed
+  `99983000000` raw USDC after the 1/5/10 USDC repeats consumed 16 USDC. The
+  script records observed balances per run and skips re-funding;
+  `tenderly_setBalance` / `tenderly_addErc20Balance` are implemented as the
+  documented default for unfunded addresses but were not needed on this
+  environment. The approval transaction ids below are from the first run;
+  subsequent runs re-verified the allowances by read-back and recorded
+  `approve-skipped` entries.
+- **Approvals (normal contract transactions, unsigned `eth_sendTransaction`,
+  no signing keys):**
+  - USDC `approve(Permit2, max)` — tx `0x15ecc84545d1ecb812b19a7a13517bf30806de89effa304f0a891d6023bb5227`,
+    block `25932008`, gas `55846`, allowance read-back verified.
+  - Permit2 `approve(USDC, UniversalRouter, max, +7d)` — tx `0x8612c83751c39ccd18e9723a692852a0c350f2636d058106f0b0f99657bd0f99`,
+    block `25932009`, gas `47794`, allowance read-back verified.
+- **Storage overrides:** none used. `tenderly_setStorageAt` exists only as a
+  disclosed fallback and was never invoked.
+
+### Protected swap (release run, 1 USDC)
+
+Same pinned pool, UR v2 `V4_SWAP` (`0x10`), actions `0x060c0f`, empty
+`hookData`, 50 bps. Quoted on the fork immediately before execution.
+
+| Field | Value |
+| --- | --- |
+| Quote block (fork) | `25932017` |
+| Indicative quote | `1000167` USDT raw (`1.000167` USDT) |
+| `amountOutMinimum` | `995166` USDT raw |
+| Swap tx | `0x19d1aa98da2d833b9f6bf702a4e632124106201017fc2a7e362c1d6e63bfa899` (block `25932018`, fork chain `9991`) |
+| Receipt | `success`, gas `1635722` |
+| Actual output | `1000167` USDT raw (balance delta; identical to the log-summed USDT transfers to the user) |
+| USDC spent | `1000000` raw (exactly `amountIn`) |
+| Result | **PASS** (`actualOut >= amountOutMinimum`, receipt success) |
+
+The recorded trace (56 raw receipt logs in
+[docs/fork-evidence.json](fork-evidence.json)) shows the full DualPool JIT
+cycle around the swap:
+
+1. ERC-4626 vault withdrawals by the `0xbeef…` DualPool vaults (USDC side, then USDT side).
+2. **Three `ModifyLiquidity` events with `sender = fixture hook`** — JIT liquidity deployed at ticks `0..10`, `-10..30`, `-60..60` (salt `0x…44554f4c`).
+3. PoolManager `Swap` with `sender = Universal Router`: `amount0 = -1000000` (USDC in), `amount1 = +1000171` (USDT out).
+4. **Three `ModifyLiquidity` events with `sender = fixture hook`** — the JIT positions burned (negated deltas).
+5. Vault re-deposits and the final USDT transfer to the test address.
+
+### Size repeats (diagnostic, same fork)
+
+| Exact in (USDC) | Quote (USDT raw) | `amountOutMinimum` | Actual out (USDT raw) | Gas | Result |
+| --- | --- | --- | --- | --- | --- |
+| 1 (release) | `1000167` | `995166` | `1000167` | `1635722` | PASS |
+| 5 | `5000947` | `4975942` | `5000947` | `1635722` | PASS |
+| 10 | `10001791` | `9951782` | `10001791` | `1635722` | PASS |
+
+At 1–10 USDC the executable fill equals the indicative quote exactly; the
+WO-6 gap at 100 USDC (~46% below quote) is a size-dependent upstream quote
+limitation and remains documented above. Fork state advances with each run;
+re-running `npm run fork` produces fresh quotes and transactions.
+
+One transient failure was observed and diagnosed: Virtual Environments stamp
+newly mined blocks with real-world time, so after an idle gap the latest-block
+timestamp is stale; a deadline derived from it (ts + 600) had already passed
+when the transaction mined — tx `0x74e93a333c33fd654e92d3460052b3d6718369d95cf7933b55403ab88b7ca161`
+reverted `TransactionDeadlinePassed` (selector `0x5bf6f916`, reproduced by an
+`eth_call` replay at that block). The deadline is now
+`max(latest block timestamp, wall clock) + 600` (`executeDeadline`), and failed
+or diagnostic runs write to separate evidence files so the committed release
+artifact can never be clobbered.
+
+### Reproduction
+
+```sh
+# .env: TENDERLY_PUBLIC_RPC_URL, TENDERLY_ADMIN_RPC_URL (secret),
+#       TENDERLY_FORK_BLOCK=<head at fork time>, TENDERLY_CHAIN_ID,
+#       ALFQUOTE_TENDERLY_FROM=<dedicated test address>, ETHEREUM_RPC_URL (archive-capable)
+npm run fork                              # verify -> setup -> protected 1 USDC swap; exit 0 only on PASS
+npm run fork:diagnostic -- --amount 5|10  # size repeats; never the release result
+```
+
+Evidence export: `docs/fork-evidence.json` (machine-readable; funding,
+approvals, and swap recorded separately; receipt logs included; both endpoint
+URLs redacted). The exported trace satisfies the public-evidence requirement;
+a dashboard link can be added later via `TENDERLY_EVIDENCE_URL`.
+
 ## Phase 1 decision
 
-**REVISE.**
+**PASS.**
 
-- Negative-liquidity proof: **PROCEED** (vanilla `L=0`, positive effective liquidity, positive empty-`hookData` quote).
-- Protected Universal Router `execute` at 50 bps: **not successful**. Small sizes pass min-out then revert on missing Permit2; 100 USDC reverts `V4TooLittleReceived`.
-- A Phase 1 PASS required one successful `execute` with a normal slippage bound. That did not occur. Phase 2 (library, CLI, `uniswap-ai`) must not start until a successful small-size simulation exists or the project is formally revised.
-- Judge-facing claims: DualPool can quote while vanilla `L` is empty; the indicative quote is **not** a firm fill, especially at 100 USDC; execution remains standard v4 with empty `hookData`.
+- Negative-liquidity proof (mainnet, read-only): **PROCEED** — vanilla `L=0`
+  while effective liquidity and the empty-`hookData` quote are positive; re-verified at the fork origin block `25932005`.
+- Protected Universal Router execution at 50 bps: **PASS on the controlled
+  fork** — 1 USDC swap completed with `actualOut >= amountOutMinimum` and the
+  full JIT trace recorded. The mainnet read-only wallet still cannot execute
+  (no Permit2 approvals there, by design).
+- Quote-vs-fill: equal at 1–10 USDC on this pool; the indicative quote remains
+  non-binding and degrades at 100 USDC (WO-6 table above).
+- Phase 2 (library, CLI, `uniswap-ai` skill) is unblocked by this PASS.
 
 ## Phase 1 release gate
 
-`npm run release` runs type-check, build, tests, no-send, spike, proof, and `npm run simulate -- --amount 1`. It exits 0 **only** when that protected simulation succeeds. Diagnostic reverts (`npm run simulate:diagnostic`, `npm run sweep`) are separate and never determine the release result.
+`npm run release` runs type-check, build, tests, the no-send + Tenderly-boundary gate, spike, proof, and `npm run fork` (controlled-fork protected swap, 1 USDC at 50 bps). It exits 0 **only** when that swap PASSES. Diagnostic paths (`simulate:diagnostic`, `sweep`, `fork:diagnostic`) are separate and never determine the release result.
 
 CI (`.github/workflows/phase1.yml`) runs install, type-check, build, tests, and the no-send grep. It does not use `ETHEREUM_RPC_URL`.
 
@@ -303,7 +413,8 @@ cp .env.example .env          # ETHEREUM_RPC_URL; ALFQUOTE_SIMULATION_FROM for s
 npm run spike
 npm run proof
 npm run sweep
-npm run simulate -- --amount 1
+npm run simulate -- --amount 1   # read-only mainnet dry-run (expect AllowanceExpired: no approvals by design)
+npm run fork                     # controlled-fork protected swap (TENDERLY_* env required)
 ```
 
 Historical replay of the WO-6 table (archive RPC required):
@@ -315,7 +426,7 @@ npm run sweep -- --block 25926196
 npm run simulate -- --amount 1 --block 25926196
 ```
 
-`npm run release` is the full local gate and will fail until `execute` succeeds.
+`npm run release` is the full local gate (offline checks + mainnet reads + the controlled-fork swap).
 
 Notes for reproduction on free-tier endpoints: `eth_getLogs` is capped at
 small block ranges (Alchemy free: 10 blocks; public nodes: 10k or
@@ -336,4 +447,4 @@ archive `eth_call` / `eth_getCode`.
 - Registry membership and liveness change; re-run the spike before relying on
   any value here.
 
-**Phase 1 decision: REVISE.**
+**Phase 1 decision: PASS.**
