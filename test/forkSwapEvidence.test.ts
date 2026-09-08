@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "viem";
 import { FIXTURE_HOOK, PINNED_POOL_KEY, USDC, USDT } from "../src/addresses.js";
-import { MODIFY_LIQUIDITY_SELECTOR, POOL_MANAGER_SWAP_SELECTORS, TRANSFER_EVENT_SELECTOR, decodeSwapEvents, runForkSwap } from "../src/tenderly/forkSwap.js";
+import { MODIFY_LIQUIDITY_SELECTOR, POOL_MANAGER_SWAP_SELECTORS, TRANSFER_EVENT_SELECTOR, decodeSwapEvents, executeDeadline, runForkSwap } from "../src/tenderly/forkSwap.js";
+import { assertNoEndpointSecrets } from "../src/tenderly/evidence.js";
 import type { ForkReceipt, ForkReader } from "../src/tenderly/forkSetup.js";
 import type { TenderlyAdmin } from "../src/tenderly/adminClient.js";
 import { loadTenderlyConfig } from "../src/tenderly/config.js";
@@ -58,6 +59,12 @@ describe("runForkSwap", () => {
     const run = await runForkSwap(admin, deps, { config, amountIn: 1_000n, quoteBlock: 1n });
     expect(run.pass).toBe(true);
   });
+  it("fails below min-out", async () => {
+    const { admin, deps } = swapDeps({ quote: 1_010n, usdtAfter: 1_000n });
+    const run = await runForkSwap(admin, deps, { config, amountIn: 1_000n, quoteBlock: 1n });
+    expect(run.pass).toBe(false);
+    expect(run.failure).toMatch(/below amountOutMinimum/);
+  });
   it("fails when log-summed output differs from the balance delta", async () => {
     const { admin, deps } = swapDeps({ usdtAfter: 1_000n, transferValue: 999n });
     const run = await runForkSwap(admin, deps, { config, amountIn: 1_000n, quoteBlock: 1n });
@@ -68,5 +75,36 @@ describe("runForkSwap", () => {
     const { admin, deps } = swapDeps({ status: "reverted", usdtAfter: 0n, transferValue: 0n });
     const run = await runForkSwap(admin, deps, { config, amountIn: 1_000n, quoteBlock: 1n });
     expect(run.pass).toBe(false);
+  });
+});
+
+describe("executeDeadline", () => {
+  it("uses wall clock when the latest fork timestamp is stale", () => {
+    expect(executeDeadline(1_788_867_220n, 1_788_868_951n)).toBe(1_788_869_551n);
+    expect(executeDeadline(1_788_868_981n, 1_788_868_951n)).toBe(1_788_869_581n);
+  });
+});
+
+describe("assertNoEndpointSecrets", () => {
+  it("fails closed on raw URLs and endpoint paths", () => {
+    const config = loadTenderlyConfig(VALID);
+    expect(() => assertNoEndpointSecrets(`https://virtual.mainnet.rpc.tenderly.co/adm-xyz789`, config)).toThrow();
+    expect(() => assertNoEndpointSecrets(`/pub-abc123`, config)).toThrow();
+    expect(() => assertNoEndpointSecrets(`https://dashboard.tenderly.co/shared/simulation/example`, config)).not.toThrow();
+  });
+});
+
+describe("evidencePath", () => {
+  it("routes release, failure, and diagnostic artifacts separately", async () => {
+    const { evidencePath } = await import("../scripts/fork-execute.js");
+    expect(evidencePath(false, true)).toMatch(/fork-evidence\.json$/);
+    expect(evidencePath(false, false)).toMatch(/fork-evidence-failed\.json$/);
+    expect(evidencePath(true, true)).toMatch(/fork-evidence-diagnostic\.json$/);
+  });
+  it("committed release artifact records a passing receipt", async () => {
+    const raw = await import("node:fs").then((fs) => fs.readFileSync("docs/fork-evidence.json", "utf8"));
+    const evidence = JSON.parse(raw) as { swap: { receiptBlock?: string; pass?: boolean } };
+    expect(evidence.swap.receiptBlock).toMatch(/^[0-9]+$/);
+    expect(evidence.swap.pass).toBe(true);
   });
 });
