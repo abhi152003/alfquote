@@ -1,6 +1,7 @@
 import { BaseError, ContractFunctionRevertedError, decodeErrorResult, parseAbi } from "viem";
 import type { Address, Hex, PublicClient } from "viem";
 import { universalRouterAbi } from "./abis.js";
+import { errorMessage } from "./result.js";
 import { UNIVERSAL_ROUTER } from "./addresses.js";
 
 export const REVERT_ERROR_ABI = parseAbi([
@@ -104,11 +105,7 @@ export function decodeRevert(error: unknown): NonNullable<SimulateSwapResult["re
       : undefined;
   const reverted = walked instanceof ContractFunctionRevertedError ? walked : undefined;
   const shortMessage =
-    error instanceof BaseError
-      ? error.shortMessage
-      : error instanceof Error
-        ? error.message
-        : String(error);
+    (error instanceof BaseError ? error.shortMessage : undefined) ?? errorMessage(error);
   const rawData = (reverted?.raw ?? undefined) as Hex | undefined;
   if (rawData) {
     try {

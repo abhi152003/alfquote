@@ -19,6 +19,10 @@ export interface MockRoutes {
   reads?: Record<string, unknown>;
   /** Raw eth_call responder; when omitted any eth_call throws. */
   call?: (req: { to: Address; data: Hex; gas?: bigint; blockNumber?: bigint }) => { data: Hex } | Promise<{ data: Hex }>;
+  /** getBlock result (timestamp only). */
+  block?: { timestamp: bigint };
+  /** estimateContractGas result; an Error throws (revert path). */
+  estimateGas?: bigint | Error;
   logs?: MockLog[];
   getLogsError?: Error;
 }
@@ -67,6 +71,20 @@ export function fakeClient(routes: MockRoutes): MockedClient {
       if (value instanceof Error) throw value;
       if (value === undefined) throw new Error(`unexpected read ${key}`);
       return value;
+    },
+    getBlock: async (req: { blockNumber?: bigint }) => {
+      calls.push({ method: "getBlock", ...req });
+      return { timestamp: routes.block?.timestamp ?? 0n };
+    },
+    simulateContract: async (req: Record<string, unknown>) => {
+      calls.push({ method: "simulateContract", ...req });
+      return { request: { ...req } };
+    },
+    estimateContractGas: async (req: Record<string, unknown>) => {
+      calls.push({ method: "estimateContractGas", ...req });
+      if (routes.estimateGas instanceof Error) throw routes.estimateGas;
+      if (routes.estimateGas !== undefined) return routes.estimateGas;
+      throw new Error("unexpected estimateContractGas");
     },
     call: async (req: { to: Address; data: Hex; gas?: bigint; blockNumber?: bigint }) => {
       calls.push({ method: "eth_call", functionName: "eth_call", ...req });
