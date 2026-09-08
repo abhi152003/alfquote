@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RPC_URL_ENV_VAR, SpikeConfigError, loadSpikeConfig } from "../src/index.js";
+import { RPC_URL_ENV_VAR, SpikeConfigError, loadSpikeConfig } from "../config.js";
 
 describe("loadSpikeConfig", () => {
   it("fails closed when the RPC URL variable is missing", () => {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "viem";
-import type { ForkEvidence } from "../src/tenderly/evidence.js";
-import { ForkEvidenceValidationError, validateReleaseEvidence } from "../src/tenderly/evidence.js";
-import { redactRpcSecrets } from "../src/output.js";
+import type { ForkEvidence } from "../evidence.js";
+import { ForkEvidenceValidationError, validateReleaseEvidence } from "../evidence.js";
+import { redactRpcSecrets } from "alfquote";
 
 const HASH = `0x${"ab".repeat(32)}` as Hex;
 const TEST = "0x0000000000000000000000000000000000000001" as Address;

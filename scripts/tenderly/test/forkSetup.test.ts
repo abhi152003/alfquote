@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "viem";
-import { PERMIT2, USDC } from "../src/addresses.js";
+import { PERMIT2, USDC } from "alfquote";
 import {
   ForkSetupError,
   MIN_FUND_USDC,
@@ -9,9 +9,9 @@ import {
   runForkSetup,
   type ForkReader,
   type ForkReceipt,
-} from "../src/tenderly/forkSetup.js";
-import type { TenderlyAdmin } from "../src/tenderly/adminClient.js";
-import { loadTenderlyConfig } from "../src/tenderly/config.js";
+} from "../forkSetup.js";
+import type { TenderlyAdmin } from "../adminClient.js";
+import { loadTenderlyConfig } from "../config.js";
 
 const VALID: Record<string, string> = {
   TENDERLY_PUBLIC_RPC_URL: "https://virtual.mainnet.rpc.tenderly.co/pub-abc123",

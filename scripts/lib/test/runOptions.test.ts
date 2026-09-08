@@ -5,7 +5,7 @@ import {
   DEFAULT_AMOUNT_USDC,
   RunOptionsError,
   loadRunOptions,
-} from "../src/runOptions.js";
+} from "../runOptions.js";
 
 describe("loadRunOptions", () => {
   it("defaults to 100 USDC and no block", () => {

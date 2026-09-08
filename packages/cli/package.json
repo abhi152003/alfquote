@@ -1,0 +1,27 @@
+{
+  "name": "@alfquote/cli",
+  "version": "0.1.0",
+  "description": "Command-line interface for the alfquote DualPool integration library",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=22.9.0"
+  },
+  "bin": {
+    "alfquote": "dist/main.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/main.ts",
+      "import": "./dist/main.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "alfquote": "*"
+  }
+}

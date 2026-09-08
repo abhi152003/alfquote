@@ -8,7 +8,9 @@
 
 import { concatHex, encodeAbiParameters, toFunctionSelector } from "viem";
 import type { AbiParameter, Address, Hex } from "viem";
-import { PERMIT2, UNIVERSAL_ROUTER, USDC } from "../addresses.js";
+import {
+  PERMIT2, UNIVERSAL_ROUTER, USDC,
+} from "alfquote";
 import type { TenderlyConfig } from "./config.js";
 import type { TenderlyAdmin } from "./adminClient.js";
 

@@ -7,31 +7,37 @@ import type { Address, Hex } from "viem";
 import { writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import {
+  decodeRevert,
   DEFAULT_SLIPPAGE_BPS,
+  erc20Abi, permit2Abi,
   FIXTURE_HOOK,
   FIXTURE_POOL_ID,
+  getIndicativeQuoteSafe,
   PERMIT2,
   PINNED_POOL_KEY,
-  SpikeConfigError,
-  UNIVERSAL_ROUTER,
-  createMainnetClient,
-  getIndicativeQuoteSafe,
-  loadRunOptions,
-  loadSpikeConfig,
   readErc20Info,
   readHookStats,
   readMaxGas,
+  redactRpcSecrets,
+  UNIVERSAL_ROUTER,
+} from "alfquote";
+import {
+  createMainnetClient,
+} from "../lib/client.js";
+import {
+  loadSpikeConfig,
+  SpikeConfigError,
+} from "../lib/config.js";
+import {
+  loadRunOptions,
   RunOptionsError,
-} from "../src/index.js";
-import { erc20Abi, permit2Abi } from "../src/abis.js";
-import { decodeRevert } from "../src/simulateSwap.js";
-import { redactRpcSecrets } from "../src/output.js";
-import { ALFQUOTE_TENDERLY_FROM_ENV_VAR, TenderlyConfigError, loadTenderlyConfig, maskTenderlyUrl } from "../src/tenderly/config.js";
-import { TenderlyAdminError, connectTenderlyAdmin } from "../src/tenderly/adminClient.js";
-import { ForkVerificationError, assertDistinctEndpoints, verifyFork } from "../src/tenderly/forkVerify.js";
-import { ForkSetupError, runForkSetup, type ForkReceipt, type ForkReader } from "../src/tenderly/forkSetup.js";
-import { runForkSwap } from "../src/tenderly/forkSwap.js";
-import { assertNoEndpointSecrets, buildForkEvidence, validateReleaseEvidence } from "../src/tenderly/evidence.js";
+} from "../lib/runOptions.js";
+import { ALFQUOTE_TENDERLY_FROM_ENV_VAR, TenderlyConfigError, loadTenderlyConfig, maskTenderlyUrl } from "./config.js";
+import { TenderlyAdminError, connectTenderlyAdmin } from "./adminClient.js";
+import { ForkVerificationError, assertDistinctEndpoints, verifyFork } from "./forkVerify.js";
+import { ForkSetupError, runForkSetup, type ForkReceipt, type ForkReader } from "./forkSetup.js";
+import { runForkSwap } from "./forkSwap.js";
+import { assertNoEndpointSecrets, buildForkEvidence, validateReleaseEvidence } from "./evidence.js";
 
 const SLIPPAGE_ENV = "ALFQUOTE_SLIPPAGE_BPS";
 const DIAGNOSTIC_ENV = "ALFQUOTE_DIAGNOSTIC";
@@ -40,7 +46,7 @@ const CONTROLLED_LABEL = "controlled-fork execution, not a mainnet transaction";
 
 export function evidencePath(diagnostic: boolean, pass: boolean): string {
   const file = diagnostic ? "fork-evidence-diagnostic.json" : pass ? "fork-evidence.json" : "fork-evidence-failed.json";
-  return new URL(`../docs/${file}`, import.meta.url).pathname;
+  return new URL(`../../docs/${file}`, import.meta.url).pathname;
 }
 
 function exitConfigError(message: string): never {

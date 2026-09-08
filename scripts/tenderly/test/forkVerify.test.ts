@@ -7,10 +7,10 @@ import {
   assertPinnedPoolIdentity,
   verifyFork,
   type VerifyDeps,
-} from "../src/tenderly/forkVerify.js";
-import { FIXTURE_POOL_ID, PINNED_POOL_KEY, POOL_MANAGER } from "../src/addresses.js";
-import { loadTenderlyConfig } from "../src/tenderly/config.js";
-import type { TenderlyAdmin } from "../src/tenderly/adminClient.js";
+} from "../forkVerify.js";
+import { FIXTURE_POOL_ID, PINNED_POOL_KEY, POOL_MANAGER } from "alfquote";
+import { loadTenderlyConfig } from "../config.js";
+import type { TenderlyAdmin } from "../adminClient.js";
 
 const VALID: Record<string, string> = {
   TENDERLY_PUBLIC_RPC_URL: "https://virtual.mainnet.rpc.tenderly.co/pub-abc123",

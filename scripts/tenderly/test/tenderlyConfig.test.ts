@@ -9,7 +9,7 @@ import {
   loadTenderlyConfig,
   maskTenderlyUrl,
   sameHost,
-} from "../src/tenderly/config.js";
+} from "../config.js";
 
 const VALID: Record<string, string> = {
   [TENDERLY_PUBLIC_RPC_URL_ENV_VAR]: "https://virtual.mainnet.rpc.tenderly.co/pub-abc123",

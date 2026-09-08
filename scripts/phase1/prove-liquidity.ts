@@ -1,27 +1,33 @@
 /** Read-only DualPool proof: vanilla L vs reserves vs effective liquidity, then a quote. */
 import { formatUnits } from "viem";
 import {
+  decideProof,
+  FIXTURE_HOOK,
+  FIXTURE_POOL_ID,
+  getIndicativeQuoteSafe,
+  maskRpcUrl, redactKeys,
+  NEAR_ZERO_VANILLA_LIQUIDITY,
+  PINNED_POOL_KEY,
+  POOL_MANAGER,
+  readErc20Info,
+  readHookStats,
+  readLiveness,
+  readMaxGas,
+  readVanillaLiquidity,
+} from "alfquote";
+import {
+  createMainnetClient,
+} from "../lib/client.js";
+import {
+  loadSpikeConfig,
   RPC_URL_ENV_VAR,
   SpikeConfigError,
-  loadSpikeConfig,
+} from "../lib/config.js";
+import {
   loadRunOptions,
   resolveBlockNumber,
   RunOptionsError,
-  createMainnetClient,
-  readVanillaLiquidity,
-  readErc20Info,
-  readLiveness,
-  readMaxGas,
-  readHookStats,
-  getIndicativeQuoteSafe,
-  decideProof,
-  NEAR_ZERO_VANILLA_LIQUIDITY,
-  POOL_MANAGER,
-  FIXTURE_HOOK,
-  FIXTURE_POOL_ID,
-  PINNED_POOL_KEY,
-} from "../src/index.js";
-import { maskRpcUrl, redactKeys } from "../src/output.js";
+} from "../lib/runOptions.js";
 
 async function main(): Promise<void> {
   await run();

@@ -18,3 +18,4 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: bash scripts/check-no-send.sh
+      - run: bash scripts/check-package-boundaries.sh

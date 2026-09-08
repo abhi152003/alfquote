@@ -2,14 +2,16 @@
 
 import { toEventSelector } from "viem";
 import type { Address, Hex } from "viem";
-import { FIXTURE_HOOK, PINNED_POOL_KEY, UNIVERSAL_ROUTER } from "../addresses.js";
-import type { IndicativeQuoteResult } from "../alfQuote.js";
-import type { EncodedExecute } from "../v4Swap.js";
 import {
-  DEFAULT_SLIPPAGE_BPS,
   amountOutMinimumFromQuote,
+  type EncodedExecute,
+  DEFAULT_SLIPPAGE_BPS,
   encodeV4ExactInSingleExecute,
-} from "../v4Swap.js";
+  FIXTURE_HOOK,
+  type IndicativeQuoteResult,
+  PINNED_POOL_KEY,
+  UNIVERSAL_ROUTER,
+} from "alfquote";
 import type { ForkReceipt, ForkReader } from "./forkSetup.js";
 import type { TenderlyAdmin } from "./adminClient.js";
 import type { TenderlyConfig } from "./config.js";

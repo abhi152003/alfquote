@@ -2,23 +2,29 @@
 import { formatUnits, isAddress } from "viem";
 import type { Address } from "viem";
 import {
+  DEFAULT_SLIPPAGE_BPS,
+  FIXTURE_POOL_ID,
+  maskRpcUrl,
+  PERMIT2,
+  POOL_MANAGER,
+  quoteFillGapBps,
+  redactKeys,
+  runProtectedSimulation,
+  UNIVERSAL_ROUTER,
+} from "alfquote";
+import {
+  createMainnetClient,
+} from "../lib/client.js";
+import {
+  loadSpikeConfig,
   RPC_URL_ENV_VAR,
   SpikeConfigError,
-  loadSpikeConfig,
+} from "../lib/config.js";
+import {
   loadRunOptions,
   resolveBlockNumber,
   RunOptionsError,
-  createMainnetClient,
-  runProtectedSimulation,
-  quoteFillGapBps,
-  DEFAULT_SLIPPAGE_BPS,
-  POOL_MANAGER,
-  UNIVERSAL_ROUTER,
-  PERMIT2,
-  FIXTURE_POOL_ID,
-  maskRpcUrl,
-  redactKeys,
-} from "../src/index.js";
+} from "../lib/runOptions.js";
 
 const SENDER_ENV = "ALFQUOTE_SIMULATION_FROM";
 const SLIPPAGE_ENV = "ALFQUOTE_SLIPPAGE_BPS";

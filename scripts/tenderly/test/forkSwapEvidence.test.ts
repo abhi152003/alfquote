@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Address, Hex } from "viem";
-import { FIXTURE_HOOK, PINNED_POOL_KEY, USDC, USDT } from "../src/addresses.js";
-import { MODIFY_LIQUIDITY_SELECTOR, POOL_MANAGER_SWAP_SELECTORS, TRANSFER_EVENT_SELECTOR, decodeSwapEvents, executeDeadline, runForkSwap } from "../src/tenderly/forkSwap.js";
-import { assertNoEndpointSecrets } from "../src/tenderly/evidence.js";
-import type { ForkReceipt, ForkReader } from "../src/tenderly/forkSetup.js";
-import type { TenderlyAdmin } from "../src/tenderly/adminClient.js";
-import { loadTenderlyConfig } from "../src/tenderly/config.js";
+import { FIXTURE_HOOK, PINNED_POOL_KEY, USDC, USDT } from "alfquote";
+import { MODIFY_LIQUIDITY_SELECTOR, POOL_MANAGER_SWAP_SELECTORS, TRANSFER_EVENT_SELECTOR, decodeSwapEvents, executeDeadline, runForkSwap } from "../forkSwap.js";
+import { assertNoEndpointSecrets } from "../evidence.js";
+import type { ForkReceipt, ForkReader } from "../forkSetup.js";
+import type { TenderlyAdmin } from "../adminClient.js";
+import { loadTenderlyConfig } from "../config.js";
 
 const VALID: Record<string, string> = { TENDERLY_PUBLIC_RPC_URL: "https://virtual.mainnet.rpc.tenderly.co/pub-abc123", TENDERLY_ADMIN_RPC_URL: "https://virtual.mainnet.rpc.tenderly.co/adm-xyz789", TENDERLY_FORK_BLOCK: "25926196", TENDERLY_CHAIN_ID: "73571", ALFQUOTE_TENDERLY_FROM: "0x1234567890abcdef1234567890abcdef12345678" };
 const FROM = "0x1234567890AbCdEf1234567890aBcDeF12345678" as Address;
@@ -96,7 +96,7 @@ describe("assertNoEndpointSecrets", () => {
 
 describe("evidencePath", () => {
   it("routes release, failure, and diagnostic artifacts separately", async () => {
-    const { evidencePath } = await import("../scripts/fork-execute.js");
+    const { evidencePath } = await import("../fork-execute.js");
     expect(evidencePath(false, true)).toMatch(/fork-evidence\.json$/);
     expect(evidencePath(false, false)).toMatch(/fork-evidence-failed\.json$/);
     expect(evidencePath(true, true)).toMatch(/fork-evidence-diagnostic\.json$/);

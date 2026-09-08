@@ -6,37 +6,43 @@
  * proofs land in WO-3, simulation in WO-4.
  */
 import {
+  ALLOWLISTED_FACTORY,
+  DEMO_POOL_INIT,
+  derivePoolId,
+  enumerateDeployments,
+  erc165Abi, alfHookAbi, hookStatsAbi,
+  FACTORY_BIRTH_BLOCK,
+  FACTORY_REGISTRY_SNAPSHOT,
+  factoryProvenance,
+  FIXTURE_HOOK,
+  FIXTURE_HOOK_BIRTH_BLOCK,
+  FIXTURE_POOL_ID,
+  hasBytecode,
+  IALFHOOK_INTERFACE_ID,
+  IALFHOOK_SOURCE_URL,
+  IHOOKSTATS_INTERFACE_ID,
+  IHOOKSTATS_SOURCE_URL,
+  interfaceIdOf,
+  maskRpcUrl, redactKeys,
+  PINNED_POOL_KEY,
+  POOL_MANAGER,
+  POOL_MANAGER_BIRTH_BLOCK,
+  reverseProvenance,
+  supportsInterface,
+} from "alfquote";
+import {
+  createMainnetClient,
+} from "../lib/client.js";
+import {
+  loadSpikeConfig,
   RPC_URL_ENV_VAR,
   SpikeConfigError,
-  loadSpikeConfig,
+} from "../lib/config.js";
+import {
   loadRunOptions,
   resolveBlockNumber,
   RunOptionsError,
-  createMainnetClient,
-  hasBytecode,
-  enumerateDeployments,
-  factoryProvenance,
-  reverseProvenance,
-  supportsInterface,
-  derivePoolId,
-  interfaceIdOf,
-  ALLOWLISTED_FACTORY,
-  POOL_MANAGER,
-  FIXTURE_HOOK,
-  FIXTURE_POOL_ID,
-  PINNED_POOL_KEY,
-  IALFHOOK_INTERFACE_ID,
-  IHOOKSTATS_INTERFACE_ID,
-  IALFHOOK_SOURCE_URL,
-  IHOOKSTATS_SOURCE_URL,
-  DEMO_POOL_INIT,
-  POOL_MANAGER_BIRTH_BLOCK,
-  FACTORY_BIRTH_BLOCK,
-  FIXTURE_HOOK_BIRTH_BLOCK,
-  FACTORY_REGISTRY_SNAPSHOT,
-} from "../src/index.js";
-import { erc165Abi, alfHookAbi, hookStatsAbi } from "../src/abis.js";
-import { maskRpcUrl, redactKeys } from "../src/output.js";
+} from "../lib/runOptions.js";
 
 interface CheckResult {
   name: string;

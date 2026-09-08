@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadTenderlyConfig, TENDERLY_CHAIN_ID_ENV_VAR } from "../src/tenderly/config.js";
-import { connectTenderlyAdmin, TenderlyAdminError, type RpcRequest } from "../src/tenderly/adminClient.js";
+import { loadTenderlyConfig, TENDERLY_CHAIN_ID_ENV_VAR } from "../config.js";
+import { connectTenderlyAdmin, TenderlyAdminError, type RpcRequest } from "../adminClient.js";
 
 const VALID: Record<string, string> = {
   TENDERLY_PUBLIC_RPC_URL: "https://virtual.mainnet.rpc.tenderly.co/pub-abc123",
@@ -12,26 +12,31 @@ const VALID: Record<string, string> = {
   ALFQUOTE_TENDERLY_FROM: "0x1234567890abcdef1234567890abcdef12345678",
 };
 
-/** Mainnet-path source files: everything except the tenderly subtree and the fork script. */
+/** Mainnet-path source files: the product packages and the read-only evidence scripts. */
 function mainnetPathFiles(root: string): string[] {
-  const forkScript = join(process.cwd(), "scripts", "fork-execute.ts");
   return readdirSync(root, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".ts"))
     .map((entry) => join(entry.parentPath, entry.name))
-    .filter((file) => !file.includes("src/tenderly/") && file !== forkScript)
     .filter((file) => !file.includes("node_modules") && !file.includes("/dist/"));
 }
 
+const MAINNET_TREES = [
+  join(process.cwd(), "packages", "alfquote", "src"),
+  join(process.cwd(), "packages", "cli", "src"),
+  join(process.cwd(), "scripts", "phase1"),
+  join(process.cwd(), "scripts", "lib"),
+];
+
 describe("mainnet read-only boundary", () => {
   it("mainnet-path files never reference Tenderly, so mutation helpers are unreachable there", () => {
-    const files = [...mainnetPathFiles(join(process.cwd(), "src")), ...mainnetPathFiles(join(process.cwd(), "scripts"))];
+    const files = MAINNET_TREES.flatMap((tree) => mainnetPathFiles(tree));
     expect(files.length).toBeGreaterThan(10);
     const offenders = files.filter((file) => /tenderly/i.test(readFileSync(file, "utf8")));
     expect(offenders).toEqual([]);
   });
 
-  it("the mainnet barrel does not re-export the tenderly subtree", () => {
-    const index = readFileSync(join(process.cwd(), "src/index.ts"), "utf8");
+  it("the public library barrel does not reference the controlled-fork subtree", () => {
+    const index = readFileSync(join(process.cwd(), "packages", "alfquote", "src", "index.ts"), "utf8");
     expect(/tenderly/i.test(index)).toBe(false);
   });
 });

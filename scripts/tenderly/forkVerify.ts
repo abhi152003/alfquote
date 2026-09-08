@@ -5,8 +5,8 @@
 
 import type { Address, Hex } from "viem";
 import { toHex } from "viem";
-import { derivePoolId, poolStateSlot, type PoolKey } from "../pool.js";
 import {
+  derivePoolId, poolStateSlot, type PoolKey,
   FIXTURE_HOOK,
   FIXTURE_POOL_ID,
   PERMIT2,
@@ -15,7 +15,7 @@ import {
   UNIVERSAL_ROUTER,
   USDC,
   USDT,
-} from "../addresses.js";
+} from "alfquote";
 import { sameHost, type TenderlyConfig } from "./config.js";
 import type { LatestBlockInfo, TenderlyAdmin } from "./adminClient.js";
 

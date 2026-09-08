@@ -8,6 +8,7 @@ npm run type-check
 npm run build
 npm test
 bash scripts/check-no-send.sh
+bash scripts/check-package-boundaries.sh
 npm run spike
 npm run proof
 npm run fork
