@@ -73,8 +73,10 @@ function summarize(result: CommandResult<unknown, object>): string[] {
     }
     case "swap": {
       const plan = data["plan"] as Record<string, unknown>;
+      const calldata = fmt(plan["calldata"]);
       const out = [
         `plan: amountIn=${fmt(plan["amountIn"])} amountOutMinimum=${fmt(plan["amountOutMinimum"])} slippage=${fmt(plan["slippageBps"])} bps`,
+        `calldata: ${calldata.slice(0, 66)}… (${(calldata.length - 2) / 2} bytes)`,
         `simulation at block ${fmt(data["stateBlockUsed"])}: ${data["gas"] !== undefined ? `gas ${fmt(data["gas"])}` : "REVERTED"}`,
       ];
       const revert = data["revert"] as { name: string; shortMessage: string } | undefined;

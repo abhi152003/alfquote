@@ -228,6 +228,10 @@ Example:
       50,
     )
     .requiredOption("--sender <address>", "address whose balances/allowances the dry-run inspects", addressArg("--sender"))
+    .addHelpText(
+      "before",
+      `Direction: currency0 -> currency1 only (quote supports both via --one-for-zero).`,
+    )
     .option("--dry-run", "default and only mode; --send/--live/--broadcast are rejected")
     .addHelpText(
       "after",

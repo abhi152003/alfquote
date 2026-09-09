@@ -17,6 +17,14 @@ describe("allowanceBlockers", () => {
 
   it("flags low balance", () => {
     expect(allowanceBlockers({ ...base, balance: 1n }, 100n, 1n)[0]).toMatch(/balance/);
+    expect(allowanceBlockers({ ...base, balance: 1n }, 100n, 1n)[0]).toContain(USDC);
+  });
+
+  it("labels the balance blocker with the actual token, not a hardcoded symbol", () => {
+    const wsteth = "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0" as typeof USDC;
+    const blockers = allowanceBlockers({ ...base, token: wsteth, balance: 1n }, 100n, 1n);
+    expect(blockers[0]).toContain(wsteth);
+    expect(blockers[0]).not.toContain("USDC");
   });
 
   it("flags ERC-20 to Permit2", () => {

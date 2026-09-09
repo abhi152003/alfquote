@@ -26,7 +26,7 @@ Phase 1 fixture and diagnostic behavior — the pinned demo pool, the encoded-`A
 
 The library is side-effect free by contract and by gate: `scripts/check-package-boundaries.sh` fails if `packages/alfquote/src` ever reads the environment or argv, prints, exits, touches the filesystem, holds signers, broadcasts, or references the controlled-fork provider. Evidence scripts consume the library through the workspace (`import ... from "alfquote"`), so the boundary is real, and each entry script builds the library first.
 
-Requirements: Node.js >= 22.9 and npm. From a clean checkout:
+Requirements: Node.js >= 22.12 and npm. From a clean checkout:
 
 ```sh
 npm ci
@@ -85,7 +85,7 @@ JSON output is exactly the versioned result envelope (canonical serializer, bigi
 | 5 | dry-run swap blocked by balance/allowance |
 | 6 | configuration error (missing/invalid RPC, wrong chain) |
 
-`swap` is dry-run only; `--send`/`--live`/`--broadcast` are rejected.
+`swap` is dry-run only; `--send`/`--live`/`--broadcast` are rejected. `swap` currently supports the currency0 → currency1 direction only, while `quote` supports both via `--one-for-zero`.
 
 ## Evidence labels
 

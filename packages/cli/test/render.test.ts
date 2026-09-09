@@ -75,7 +75,7 @@ describe("renderHuman", () => {
     const text = renderHuman(okResult("swap", chain, {}, {
       plan: { amountIn: 1n, amountOutMinimum: 1n, slippageBps: 50n },
       stateBlockUsed: 25_930_000n,
-      allowanceIssues: ["sender USDC balance 0 < amountIn 1000000"],
+      allowanceIssues: ["sender balance of 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 is 0 < amountIn 1000000"],
     }));
     expect(text).toContain("blockers (fix these; they are never bypassed):");
     expect(text).toContain("dry-run only");

@@ -14,6 +14,7 @@ import {
   type PoolKey,
 } from "alfquote";
 import { FIXTURE_HOOK, FIXTURE_POOL_ID, PINNED_POOL_KEY } from "alfquote/phase1";
+import { ArgsError } from "./args.js";
 import type { AssessOptions, DiscoverOptions, PoolContext, QuoteOptions, SwapOptions } from "./args.js";
 
 export function createClient(rpcUrl: string): PublicClient {
@@ -56,6 +57,9 @@ export async function runAssess(
   client: PublicClient,
   options: AssessOptions,
 ): Promise<CommandResult<unknown, object>> {
+  if (options.useFixturePool) {
+    assertPoolIdMatches(options.pool, { key: PINNED_POOL_KEY, poolId: FIXTURE_POOL_ID });
+  }
   return assessHook(client, {
     hook: options.hook,
     ...(options.pool !== undefined || options.useFixturePool
@@ -72,6 +76,7 @@ export async function runQuote(
   options: QuoteOptions,
 ): Promise<CommandResult<unknown, object>> {
   const context = resolvePool(options.pool);
+  assertPoolIdMatches(options.poolId, context);
   const amountRaw = parseUnits(options.amount, options.decimals);
   return quoteExactIn(client, {
     hook: context.hook,
@@ -81,6 +86,15 @@ export async function runQuote(
     amountInRaw: amountRaw,
     ...(options.block !== undefined ? { blockNumber: options.block } : {}),
   });
+}
+
+/** Reject a supplied PoolId that does not match the resolved PoolKey, before any RPC reads. */
+function assertPoolIdMatches(supplied: `0x${string}` | undefined, context: { key: PoolKey; poolId: `0x${string}` }): void {
+  if (supplied !== undefined && supplied.toLowerCase() !== context.poolId.toLowerCase()) {
+    throw new ArgsError(
+      `--pool ${supplied} does not match the PoolId derived from the supplied PoolKey (${context.poolId}); refusing to mix identities`,
+    );
+  }
 }
 
 export async function runSwap(

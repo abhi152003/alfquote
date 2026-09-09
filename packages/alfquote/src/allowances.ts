@@ -56,7 +56,7 @@ export function allowanceBlockers(
 ): string[] {
   const blockers: string[] = [];
   if (snap.balance < amountIn) {
-    blockers.push(`sender USDC balance ${snap.balance} < amountIn ${amountIn}`);
+    blockers.push(`sender balance of ${snap.token} is ${snap.balance} < amountIn ${amountIn}`);
   }
   if (snap.erc20ToPermit2 < amountIn) {
     blockers.push(`ERC-20 allowance to Permit2 ${snap.erc20ToPermit2} < amountIn ${amountIn}`);

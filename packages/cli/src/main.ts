@@ -70,24 +70,33 @@ export async function runCli(
     throw error;
   }
 
-  const client = createClient(rpcUrl);
   let result: CommandResult<unknown, object>;
-  switch (parsed.command) {
-    case "discover":
-      result = await runDiscover(client, parsed);
-      break;
-    case "assess":
-      result = await runAssess(client, parsed);
-      break;
-    case "quote":
-      result = await runQuote(client, parsed);
-      break;
-    case "swap":
-      result = await runSwap(client, parsed);
-      break;
+  try {
+    const client = createClient(rpcUrl);
+    switch (parsed.command) {
+      case "discover":
+        result = await runDiscover(client, parsed);
+        break;
+      case "assess":
+        result = await runAssess(client, parsed);
+        break;
+      case "quote":
+        result = await runQuote(client, parsed);
+        break;
+      case "swap":
+        result = await runSwap(client, parsed);
+        break;
+    }
+    sinks.stdout(parsed.format === "json" ? renderJson(result) : renderHuman(result));
+  } catch (error) {
+    if (error instanceof ArgsError) {
+      sinks.stderr(`invalid input: ${error.message}`);
+      return EXIT_INVALID_INPUT;
+    }
+    sinks.stderr(`internal error: ${errorMessage(error)}`);
+    return EXIT_INTERNAL;
   }
 
-  sinks.stdout(parsed.format === "json" ? renderJson(result) : renderHuman(result));
   return exitCodeFor(result);
 }
 

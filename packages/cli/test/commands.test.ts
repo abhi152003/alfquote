@@ -52,6 +52,52 @@ describe("runCli routing and exit codes", () => {
     expect(sinks.err.join("\n")).toContain("unknown option");
   });
 
+  it("rejects a fixture quote whose --pool does not match the pinned PoolId (exit 3, no RPC)", async () => {
+    const sinks = capture();
+    const wrongPool = "0x" + "ab".repeat(32);
+    const code = await runCli(["quote", "--use-fixture-pool", "--amount", "1", "--exact-in", "--pool", wrongPool], ENV, sinks);
+    expect(code).toBe(3);
+    expect(sinks.err.join("\n")).toContain("does not match the PoolId");
+  });
+
+  it("rejects an explicit-pool quote whose --pool mismatches the derived id (exit 3)", async () => {
+    const sinks = capture();
+    const code = await runCli([
+      "quote", "--hook", HOOK,
+      "--currency0", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "--currency1", "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      "--fee", "10", "--tick-spacing", "10",
+      "--amount", "1", "--exact-in", "--pool", "0x" + "cd".repeat(32),
+    ], ENV, sinks);
+    expect(code).toBe(3);
+    expect(sinks.err.join("\n")).toContain("refusing to mix identities");
+  });
+
+  it("accepts the matching fixture PoolId", async () => {
+    const sinks = capture();
+    const code = await runCli([
+      "quote", "--use-fixture-pool", "--amount", "1", "--exact-in",
+      "--pool", "0xf32349cbc41fec9d3194f2b4e9ee72ded0bfda412427be9cb8a4087f74bdb065",
+    ], ENV, sinks);
+    expect([0, 2, 4]).toContain(code);
+  });
+
+  it("maps unexpected internal failures to exit 1 with sanitized output", async () => {
+    const err: string[] = [];
+    const broken = {
+      out: [] as string[],
+      stdout: (): void => {
+        throw new Error("write EPIPE https://rpc.example/v2/KEY1234567890");
+      },
+      stderr: (t: string) => err.push(t),
+    };
+    const code = await runCli(["quote", "--use-fixture-pool", "--amount", "1", "--exact-in"], ENV, broken);
+    expect(code).toBe(1);
+    expect(err.join("\n")).toContain("internal error");
+    expect(err.join("\n")).not.toContain("KEY1234567890");
+    expect(broken.out).toEqual([]);
+  });
+
   it("reaches the network layer only with valid input (chain mismatch → 4)", async () => {
     // A malformed-but-reachable endpoint fails the service chain probe and maps to exit 4.
     const sinks = capture();
