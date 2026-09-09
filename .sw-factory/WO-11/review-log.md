@@ -75,3 +75,10 @@ Delegate: fresh review subagent. F1 fixed (probe wrapped → compatibility unver
 **Verdict: APPROVED.**
 
 <!-- Subsequent rounds: copy the structure above and increment the round number. -->
+
+## Final disposition
+
+Orchestrator review: **approved, no blocking findings.** WO-11 marked completed at commit b6e2625.
+Non-blocking advisories recorded for follow-up (see the WO-14 thread note): one-sided
+provenance preservation via Promise.allSettled; duplicate fixture/registry rows;
+optional explicit-redaction input for userinfo-credential URLs; CI workflow rename.

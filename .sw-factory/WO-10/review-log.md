@@ -81,3 +81,10 @@ Delegate: fresh review subagent verifying the fixes. B-1 guarded with `discover/
 New advisories: missing test for the mismatch warning, undocumented `chainId: 0` sentinel, checklist scenario count — **all three applied post-verdict** (mismatch-warning test added, `ChainBlockContext` doc line, count corrected to 16; final suite 141/141).
 
 **Verdict: APPROVED.**
+
+## Final disposition
+
+Orchestrator review: **approved, no blocking findings.** WO-10 marked completed at commit ba69c4a.
+Non-blocking advisories recorded for follow-up (see the WO-14 thread note): one-sided
+provenance preservation via Promise.allSettled; duplicate fixture/registry rows;
+optional explicit-redaction input for userinfo-credential URLs; CI workflow rename.

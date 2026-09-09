@@ -69,3 +69,10 @@ This file records review and verification rounds. Append new rounds; do not over
 Delegate: general-purpose review subagent (fresh, read-only). All fifteen requirements PASS (UR v2-only encoding verified against the golden test; min-out derivation checked arithmetically against the pinned Phase 1 pair 1000194 → 995193 @ 50 bps; empty hookData; three-layer no-send enforcement; Phase 1 evidence diff empty; zero raw error.message sites; all client awaits guarded). **Verdict: APPROVED** with four advisories: A1 decodeRevert shortMessage fallback could TypeError on an argument-less BaseError (hardened post-verdict with `?? errorMessage(error)`); A2 overstated "raw quote never the bound" doc line (reworded — explicit `0n` opts in); A3 optional uint128 range guard (accepted convention, same as derivePoolId on malformed keys); A4 ambiguous fake selector in the revert test (switched to 0xdeadbeef with an explicit Unknown-fallback comment). A1/A2/A4 applied and re-verified: 192/192 tests, type-check/build, both gates.
 
 <!-- Subsequent rounds: copy the structure above and increment the round number. -->
+
+## Final disposition
+
+Orchestrator review: **approved, no blocking findings.** WO-13 marked completed at commit 21c3581.
+Non-blocking advisories recorded for follow-up (see the WO-14 thread note): one-sided
+provenance preservation via Promise.allSettled; duplicate fixture/registry rows;
+optional explicit-redaction input for userinfo-credential URLs; CI workflow rename.

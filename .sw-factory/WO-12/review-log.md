@@ -75,3 +75,10 @@ Delegate: fresh review subagent. B1/B2/A1–A4 all fixed and verified (sanitizer
 **Verdict: APPROVED.**
 
 <!-- Subsequent rounds: copy the structure above and increment the round number. -->
+
+## Final disposition
+
+Orchestrator review: **approved, no blocking findings.** WO-12 marked completed at commit d672655.
+Non-blocking advisories recorded for follow-up (see the WO-14 thread note): one-sided
+provenance preservation via Promise.allSettled; duplicate fixture/registry rows;
+optional explicit-redaction input for userinfo-credential URLs; CI workflow rename.
