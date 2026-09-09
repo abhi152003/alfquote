@@ -80,3 +80,12 @@ Orchestrator review of 151c102: strong overall; two blocking corrections require
 Non-blocking items applied: README node requirement 22.9 → 22.12; behavioral exit-1 test (failing output sink → sanitized "internal error", no key echo — output writes now guarded inside runCli); swap direction limitation documented in the swap help and README; exact calldata shown in human swap output. Advisories #1–3 (discovery allSettled, fixture dedup, userinfo-redaction input) carried to WO-15. Post-fix matrix: type-check, build, 226/226 tests, both gates, live verification of both corrections through the built CLI.
 
 **Verdict: corrections complete; awaiting orchestrator re-check.**
+
+## Final disposition
+
+Orchestrator review of correction commit 6296508: **approved.** All ten verification
+points confirmed (PoolId pre-RPC guard incl. assess fixture context, exit-3 mismatches,
+matching-id pass-through, token-address blockers with non-USDC regression, sanitized
+exit-1 on output failure, consistent node 22.12 docs, swap direction documented, calldata
+in human output, advisories carried to WO-15). WO-14 marked **completed**; WO-15 cleared
+to start.
