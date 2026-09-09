@@ -6,7 +6,7 @@ DualPool keeps just-in-time inventory in ERC-4626 vaults. PoolManager can report
 
 ## Status
 
-This repository holds the build plan and the mainnet verification spike workspace. The library, CLI, and the `uniswap-ai` skill land in later phases.
+The library services and the `alfquote` CLI are implemented; the `uniswap-ai` skill contribution lands in the final phase.
 
 See [docs/ALFQuote.md](docs/ALFQuote.md).
 
@@ -16,7 +16,7 @@ npm is the only supported package manager. The repository is an npm workspace:
 
 ```text
 packages/alfquote/   reusable library (public contracts, ABIs, reads, calldata, simulation)
-packages/cli/        the `alfquote` CLI (Phase 2 placeholder; commands land in later work orders)
+packages/cli/        the `alfquote` CLI (discover, assess, quote, and dry-run swap)
 scripts/phase1/      preserved read-only mainnet verification tools (spike, proof, simulate, sweep)
 scripts/tenderly/    controlled-fork evidence tools (non-product path)
 scripts/lib/         env/argv wiring shared by the evidence scripts (not part of the library)
@@ -61,6 +61,31 @@ The spike fails closed: it exits non-zero with an actionable message when `ETHER
 CI runs `npm ci`, type-check, build, tests, and the no-send + package-boundary greps. It does not use an RPC secret. Live spike/proof/simulate stay on `npm run release` locally.
 
 Verified mainnet facts are pinned in [docs/pins.md](docs/pins.md). Upstream permalinks and the PoolManager slot excerpt are in [docs/upstream/](docs/upstream/).
+
+## The `alfquote` CLI
+
+`packages/cli` implements the product surface (`alfquote <command> [options]`, built on [commander](https://github.com/tj/commander.js)); all behavior delegates to the library. Every command supports `--format human|json`, `--block <n>` (archive RPC), `--chain <n>` (must be 1 in Phase 2), and `--rpc <url>` (default `ETHEREUM_RPC_URL`).
+
+```sh
+alfquote discover --chain 1 --format json
+alfquote assess --hook 0x00000078BD49D5279a99b5F4011a5C61eE8caaC0 --use-fixture-pool
+alfquote quote --use-fixture-pool --amount 1 --exact-in
+alfquote swap --use-fixture-pool --amount 1 --slippage-bps 50 --sender <address> --dry-run
+```
+
+JSON output is exactly the versioned result envelope (canonical serializer, bigint as decimal strings, one final secret-redaction pass, no ANSI codes) and stays valid for skips and errors. Human output separates status, evidence, warnings, blockers, and caveats.
+
+| Exit code | Meaning |
+| --- | --- |
+| 0 | ok |
+| 1 | internal error (sanitized message) |
+| 2 | typed skip (e.g. zero quote, dead liveness) |
+| 3 | invalid input |
+| 4 | unavailable evidence (error envelope, e.g. RPC failure) |
+| 5 | dry-run swap blocked by balance/allowance |
+| 6 | configuration error (missing/invalid RPC, wrong chain) |
+
+`swap` is dry-run only; `--send`/`--live`/`--broadcast` are rejected.
 
 ## Evidence labels
 

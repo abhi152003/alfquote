@@ -1,4 +1,4 @@
-name: Phase 1 release gate
+name: Release gate
 
 on:
   push:

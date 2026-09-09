@@ -390,7 +390,7 @@ evidence link.
 
 `npm run release` runs type-check, build, tests, the no-send + Tenderly-boundary gate, spike, proof, and `npm run fork` (controlled-fork protected swap, 1 USDC at 50 bps). It exits 0 **only** when that swap PASSES. Diagnostic paths (`simulate:diagnostic`, `sweep`, `fork:diagnostic`) are separate and never determine the release result.
 
-CI (`.github/workflows/phase1.yml`) runs install, type-check, build, tests, and the no-send grep. It does not use `ETHEREUM_RPC_URL`.
+CI (`.github/workflows/release-gate.yml`) runs install, type-check, build, tests, and the no-send grep. It does not use `ETHEREUM_RPC_URL`.
 
 ## Reproduction
 

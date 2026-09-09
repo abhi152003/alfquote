@@ -6,7 +6,7 @@
   "license": "MIT",
   "private": true,
   "engines": {
-    "node": ">=22.9.0"
+    "node": ">=22.12.0"
   },
   "bin": {
     "alfquote": "dist/main.js"
@@ -22,6 +22,8 @@
     "type-check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "alfquote": "*"
+    "alfquote": "*",
+    "commander": "^15.0.0",
+    "viem": "^2.56.3"
   }
 }

@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=22.9.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "node --import tsx --env-file-if-exists=.env --watch scripts/phase1/verify-mainnet.ts",
