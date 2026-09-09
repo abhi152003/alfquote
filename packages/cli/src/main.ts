@@ -3,9 +3,11 @@
  * `alfquote` CLI entry point. Owns routing, rendering, and exit codes; every
  * behavior delegates to the `alfquote` library. Dry-run only.
  */
+import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { errorMessage } from "alfquote";
 import type { CommandResult } from "alfquote";
+import type { PublicClient } from "viem";
 import { ArgsError, parseArgs } from "./args.js";
 import { CliConfigError, loadCliConfig } from "./config.js";
 import { runAssess, runDiscover, runQuote, runSwap, createClient } from "./commands.js";
@@ -23,6 +25,11 @@ import {
 export interface OutputSinks {
   readonly stdout: (text: string) => void;
   readonly stderr: (text: string) => void;
+}
+
+/** Test seam: inject a client (and redaction set) instead of building from rpcUrl. */
+export interface RunOptions {
+  readonly client?: PublicClient;
 }
 
 /** Map a command result to its documented exit code (exported for tests). */
@@ -43,6 +50,7 @@ export async function runCli(
   argv: readonly string[],
   env: Record<string, string | undefined>,
   sinks: OutputSinks = { stdout: (t) => console.log(t), stderr: (t) => console.error(t) },
+  runOptions: RunOptions = {},
 ): Promise<number> {
   let parsed;
   try {
@@ -71,8 +79,9 @@ export async function runCli(
   }
 
   let result: CommandResult<unknown, object>;
+  const redactionUrls = [rpcUrl];
   try {
-    const client = createClient(rpcUrl);
+    const client = runOptions.client ?? createClient(rpcUrl);
     switch (parsed.command) {
       case "discover":
         result = await runDiscover(client, parsed);
@@ -87,13 +96,14 @@ export async function runCli(
         result = await runSwap(client, parsed);
         break;
     }
-    sinks.stdout(parsed.format === "json" ? renderJson(result) : renderHuman(result));
+
+    sinks.stdout(parsed.format === "json" ? renderJson(result, redactionUrls) : renderHuman(result, redactionUrls));
   } catch (error) {
     if (error instanceof ArgsError) {
       sinks.stderr(`invalid input: ${error.message}`);
       return EXIT_INVALID_INPUT;
     }
-    sinks.stderr(`internal error: ${errorMessage(error)}`);
+    sinks.stderr(`internal error: ${errorMessage(error, redactionUrls)}`);
     return EXIT_INTERNAL;
   }
 
@@ -109,6 +119,14 @@ async function main(): Promise<number> {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+// npm bins are symlinks: resolve argv[1] to its realpath before comparing
+let entryUrl: string | undefined;
+try {
+  const entry = process.argv[1];
+  entryUrl = entry === undefined ? undefined : pathToFileURL(realpathSync(entry)).href;
+} catch {
+  // argv[1] named a nonexistent path: this module is not the entry
+}
+if (entryUrl !== undefined && import.meta.url === entryUrl) {
   main().then((code) => process.exit(code));
 }

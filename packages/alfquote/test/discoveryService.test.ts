@@ -186,6 +186,50 @@ describe("discoverFactoryHooks", () => {
     expect(result.warnings.map((warning) => warning.code)).toContain("discover/partial-failures");
   });
 
+  it("preserves the surviving half of provenance evidence when one read fails", async () => {
+    const { client } = fakeClient({
+      code: { [FACTORY.toLowerCase()]: CODE, [HOOK_A.toLowerCase()]: CODE },
+      reads: registryReads({
+        [`${FACTORY.toLowerCase()}.allDeploymentsLength()`]: 2n,
+        [`${FACTORY.toLowerCase()}.allDeployments(1)`]: HOOK_B,
+        [`${FACTORY.toLowerCase()}.isFromFactory(${HOOK_B})`]: new Error("forward failed"),
+        [`${HOOK_B.toLowerCase()}.factory()`]: FACTORY,
+      }),
+    });
+    const result = await discoverFactoryHooks(client, {});
+    if (result.status !== "ok") throw new Error("expected ok");
+    const hookB = result.data.hooks[1]!;
+    expect(hookB.provenance).toBe("unknown");
+    expect(hookB.evidence).toEqual({
+      isFromFactory: null,
+      creationCodeHash: null,
+      hookReportedFactory: FACTORY,
+      reverseMatches: true,
+    });
+    expect(result.data.partialFailures).toEqual([
+      { target: `hook:${HOOK_B}`, code: "discover/hook-provenance-failed", message: "forward failed" },
+    ]);
+  });
+
+  it("deduplicates a fixture that is also a registry deployment", async () => {
+    const { client, calls } = fakeClient({
+      code: { [FACTORY.toLowerCase()]: CODE },
+      reads: registryReads({
+        [`${FACTORY.toLowerCase()}.allDeployments(0)`]: HOOK_B,
+        [`${FACTORY.toLowerCase()}.isFromFactory(${HOOK_B})`]: true,
+        [`${FACTORY.toLowerCase()}.creationCodeHashOf(${HOOK_B})`]: "0x" + "ab".repeat(32),
+        [`${HOOK_B.toLowerCase()}.factory()`]: FACTORY,
+      }),
+    });
+    const result = await discoverFactoryHooks(client, { fixtures: [HOOK_B] });
+    if (result.status !== "ok") throw new Error("expected ok");
+    expect(result.data.hooks).toHaveLength(1);
+    expect(result.data.hooks[0]!.provenance).toBe("factory");
+    expect(result.data.hooks[0]!.registryIndex).toBe(0);
+    expect(result.warnings.map((warning) => warning.code)).toContain("discover/fixture-also-registered");
+    expect(calls.some((call) => call.method === "getCode" && call.address === HOOK_B)).toBe(false);
+  });
+
   it("appends deployed fixtures labeled fixture with no factory calls", async () => {
     const fixture: Address = "0x00000078BD49D5279a99b5F4011a5C61eE8caaC0";
     const { client, calls } = fakeClient({

@@ -105,6 +105,7 @@ export const DISCOVER_WARNING_CODES = [
   "discover/partial-failures",
   "discover/provenance-one-sided",
   "discover/pool-id-mismatch",
+  "discover/fixture-also-registered",
 ] as const;
 
 export type DiscoverWarningCode = (typeof DISCOVER_WARNING_CODES)[number];
@@ -265,51 +266,57 @@ export async function discoverFactoryHooks(
   const hooks: DiscoveredHook[] = [];
 
   for (const record of registry) {
-    try {
-      const [forward, reverse] = await Promise.all([
-        factoryProvenance(client, factory, record.address, args.blockNumber),
-        reverseProvenance(client, record.address, factory, args.blockNumber),
-      ]);
-      hooks.push({
-        address: record.address,
-        registryIndex: record.index,
-        provenance: forward.isFromFactory && reverse.matches ? "factory" : "unknown",
-        evidence: {
-          isFromFactory: forward.isFromFactory,
-          creationCodeHash: forward.creationCodeHash,
-          hookReportedFactory: reverse.reported,
-          reverseMatches: reverse.matches,
-        },
-        block: args.blockNumber ?? null,
-      });
-      if (forward.isFromFactory !== reverse.matches) {
-        warnings.push({
-          code: "discover/provenance-one-sided",
-          message: `hook ${record.address}: forward=${forward.isFromFactory} reverse=${reverse.matches}; provenance is not factory`,
-        });
-      }
-    } catch (error) {
+    // allSettled: a failed side still records the surviving half of the evidence
+    const [forwardSettled, reverseSettled] = await Promise.allSettled([
+      factoryProvenance(client, factory, record.address, args.blockNumber),
+      reverseProvenance(client, record.address, factory, args.blockNumber),
+    ]);
+    const forward = forwardSettled.status === "fulfilled" ? forwardSettled.value : null;
+    const reverse = reverseSettled.status === "fulfilled" ? reverseSettled.value : null;
+    if (forwardSettled.status === "rejected") {
       partialFailures.push({
         target: `hook:${record.address}`,
         code: "discover/hook-provenance-failed",
-        message: errorMessage(error),
+        message: errorMessage(forwardSettled.reason),
       });
-      hooks.push({
-        address: record.address,
-        registryIndex: record.index,
-        provenance: "unknown",
-        evidence: {
-          isFromFactory: null,
-          creationCodeHash: null,
-          hookReportedFactory: null,
-          reverseMatches: null,
-        },
-        block: args.blockNumber ?? null,
+    }
+    if (reverseSettled.status === "rejected") {
+      partialFailures.push({
+        target: `hook:${record.address}`,
+        code: "discover/hook-provenance-failed",
+        message: errorMessage(reverseSettled.reason),
+      });
+    }
+    hooks.push({
+      address: record.address,
+      registryIndex: record.index,
+      provenance: forward?.isFromFactory === true && reverse?.matches === true ? "factory" : "unknown",
+      evidence: {
+        isFromFactory: forward?.isFromFactory ?? null,
+        creationCodeHash: forward?.creationCodeHash ?? null,
+        hookReportedFactory: reverse?.reported ?? null,
+        reverseMatches: reverse?.matches ?? null,
+      },
+      block: args.blockNumber ?? null,
+    });
+    if (forward !== null && reverse !== null && forward.isFromFactory !== reverse.matches) {
+      warnings.push({
+        code: "discover/provenance-one-sided",
+        message: `hook ${record.address}: forward=${forward.isFromFactory} reverse=${reverse.matches}; provenance is not factory`,
       });
     }
   }
 
+  const registryAddresses = new Set(registry.map((record) => record.address.toLowerCase()));
   for (const fixture of fixtures) {
+    if (registryAddresses.has(fixture.toLowerCase())) {
+      // already enumerated from the registry; one row, factory evidence wins
+      warnings.push({
+        code: "discover/fixture-also-registered",
+        message: `fixture ${fixture} is also a registry deployment; the registry row (with its registry evidence) is kept`,
+      });
+      continue;
+    }
     let fixtureCode: { present: boolean; size: number };
     try {
       fixtureCode = await hasBytecode(client, fixture, args.blockNumber);

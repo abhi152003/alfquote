@@ -8,9 +8,10 @@ import type { CommandResult } from "alfquote";
  * Every string passes one final redaction pass so no credential-bearing URL
  * can reach JSON output even if a future envelope path forgets to sanitize.
  */
-export function renderJson(result: CommandResult<unknown, object>): string {
+export function renderJson(result: CommandResult<unknown, object>, extraUrls: readonly string[] = []): string {
+  // unbounded: payload strings (e.g. exact calldata) must never be truncated
   const redactStrings = (_key: string, value: unknown): unknown =>
-    typeof value === "string" ? redactRpcSecrets(value) : value;
+    typeof value === "string" ? redactRpcSecrets(value, extraUrls, Number.MAX_SAFE_INTEGER) : value;
   return JSON.stringify(toJsonValue(result), redactStrings, 2);
 }
 
@@ -88,7 +89,7 @@ function summarize(result: CommandResult<unknown, object>): string[] {
 }
 
 /** Human output with clearly separated status, evidence, warnings, blockers, and caveats. */
-export function renderHuman(result: CommandResult<unknown, object>): string {
+export function renderHuman(result: CommandResult<unknown, object>, extraUrls: readonly string[] = []): string {
   const chain = result.chain;
   const block = chain.blockNumber === null ? "latest" : `block ${chain.blockNumber}`;
   const out: string[] = [
@@ -115,5 +116,5 @@ export function renderHuman(result: CommandResult<unknown, object>): string {
   if (result.command === "quote" && result.status === "ok") {
     out.push("caveat: indicative quotes are non-binding and can diverge at larger sizes.");
   }
-  return redactRpcSecrets(out.join("\n"));
+  return out.map((line) => redactRpcSecrets(line, extraUrls, Number.MAX_SAFE_INTEGER)).join("\n");
 }

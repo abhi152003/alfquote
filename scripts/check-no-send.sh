@@ -16,6 +16,13 @@ signer_pattern='createWalletClient|privateKeyToAccount|mnemonicToAccount|hdKeyTo
 tenderly_methods='tenderly_setBalance|tenderly_addBalance|tenderly_setErc20Balance|tenderly_addErc20Balance|tenderly_setMaxErc20Balance|tenderly_setStorageAt|tenderly_setCode|eth_sendTransaction|evm_snapshot|evm_revert|evm_increaseTime|evm_setNextBlockTimestamp'
 
 mapfile -t mainnet_files < <(find "$root/packages/alfquote/src" "$root/packages/cli/src" "$root/scripts/phase1" "$root/scripts/lib" -type f \( -name '*.ts' -o -name '*.sh' \) 2>/dev/null || true)
+# root-level shell tooling is on the mainnet path too, except the gates themselves
+for root_script in "$root/scripts"/*.sh; do
+  case "$root_script" in
+    "$root/scripts/check-no-send.sh"|"$root/scripts/check-package-boundaries.sh"|"$root/scripts/release.sh") continue ;;
+  esac
+  [ -f "$root_script" ] && mainnet_files+=("$root_script")
+done
 mapfile -t tenderly_files < <(find "$root/scripts/tenderly" -type f -name '*.ts' 2>/dev/null || true)
 
 status=0

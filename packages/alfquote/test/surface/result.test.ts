@@ -6,6 +6,7 @@ import * as serialize from "../../src/serialize.js";
 import {
   COMMON_ERROR_CODES,
   RESULT_SCHEMA_VERSION,
+  errorMessage,
   errorResult,
   isNamespacedCode,
   isOkResult,
@@ -51,6 +52,14 @@ describe("surface: serialize.js", () => {
   });
 
   const chain = { chainId: 1, blockNumber: 25_933_348n, blockSource: "pinned" as const };
+
+  it("errorMessage redacts userinfo credentials when the caller supplies its RPC URL", () => {
+    const url = "https://alchemy-key:hunter2@eth-mainnet.g.alchemy.com/v2/op0123456789";
+    const message = errorMessage(new Error(`connect failed for ${url} and again ${url}`), [url]);
+    expect(message).not.toContain("hunter2");
+    expect(message).not.toContain("alchemy-key");
+    expect(message).toContain("***");
+  });
 
   it("serializes bigint fields as decimal strings and round-trips through JSON.parse", () => {
     const ok = okResult("quote", chain, { poolId: "0xabc", amount: 1_000_000n }, { out: 995_193n });

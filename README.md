@@ -6,9 +6,22 @@ DualPool keeps just-in-time inventory in ERC-4626 vaults. PoolManager can report
 
 ## Status
 
-The library services and the `alfquote` CLI are implemented; the `uniswap-ai` skill contribution lands in the final phase.
+The library services and the `alfquote` CLI are implemented; the `uniswap-ai` skill contribution lands in the final phase. Product guide: [docs/cli.md](docs/cli.md).
 
-See [docs/ALFQuote.md](docs/ALFQuote.md).
+## Contract map
+
+Each product claim links to the contract that implements it (source anchors live in [docs/pins.md](docs/pins.md)):
+
+| Claim | Contract / implementation |
+| --- | --- |
+| Factory discovery | `AllowlistedFactory` `allDeployments`/`isFromFactory` — `packages/alfquote/src/discovery.ts` (`discoverFactoryHooks`) |
+| Compatibility | ERC-165 and the `IALFHook` interface id — `packages/alfquote/src/assessment.ts` (`assessHook`) |
+| Indicative quote | `getIndicativeQuote` — `packages/alfquote/src/alfQuote.ts` via `quote.ts` (`quoteExactIn`) |
+| Price-bounded quote | `swapToPrice` — `packages/alfquote/src/quote.ts` (`quoteSwapToPrice`) |
+| Effective liquidity | `getEffectiveLiquidity` — surfaced as `liquidity.effectiveLiquidity` on every quote result |
+| Per-pool liveness | `livePools(poolId)` — gates every quote and simulation |
+| Negative liquidity | PoolManager vanilla `getLiquidity` vs hook-aware reads — `liquidity.vanillaPoolManager` next to reserves/effective |
+| Simulation | Universal Router `V4_SWAP` with empty `hookData` and slippage protection — `packages/alfquote/src/swap.ts` (`planProtectedSwap`/`simulateProtectedSwap`) |
 
 ## Workspace
 

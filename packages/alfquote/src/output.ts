@@ -25,7 +25,11 @@ export function maskRpcUrl(url: string): string {
  * configured endpoints removes the complete URL and path even when a transport
  * library embeds them in an unexpected error shape.
  */
-export function redactRpcSecrets(text: string, extraUrls: readonly string[] = []): string {
+export function redactRpcSecrets(
+  text: string,
+  extraUrls: readonly string[] = [],
+  maxLength = 500,
+): string {
   let output = text.replace(/(\/v[23]\/)[A-Za-z0-9_-]{8,}/g, "$1***");
   for (const url of extraUrls) {
     if (!url) continue;
@@ -39,6 +43,12 @@ export function redactRpcSecrets(text: string, extraUrls: readonly string[] = []
     output = output.replace(new RegExp(escapeRegExp(url), "g"), masked);
     try {
       const parsed = new URL(url);
+      if (parsed.username || parsed.password) {
+        // userinfo credentials can appear without the full URL (e.g. "connect user:pass@host")
+        const userinfo = `${parsed.username}:${parsed.password}`;
+        output = output.replace(new RegExp(escapeRegExp(userinfo), "g"), "***");
+        output = output.replace(new RegExp(escapeRegExp(parsed.username), "g"), "***");
+      }
       if (parsed.pathname !== "/") {
         output = output.replace(new RegExp(escapeRegExp(parsed.pathname), "g"), "/***");
       }
@@ -46,7 +56,7 @@ export function redactRpcSecrets(text: string, extraUrls: readonly string[] = []
       // Configuration validation handles malformed URLs.
     }
   }
-  return output.slice(0, 500);
+  return output.slice(0, maxLength);
 }
 
 export function redactKeys(text: string): string {

@@ -81,8 +81,8 @@ export type CommandResult<TData, TInput extends object> =
  * embed full RPC URLs (with credentials) in their messages, so every catch
  * site must route through this instead of using `error.message` directly.
  */
-export function errorMessage(error: unknown): string {
-  return redactRpcSecrets(error instanceof Error ? error.message : String(error));
+export function errorMessage(error: unknown, extraUrls: readonly string[] = []): string {
+  return redactRpcSecrets(error instanceof Error ? error.message : String(error), extraUrls);
 }
 
 export function okResult<TData, TInput extends object>(
