@@ -8,6 +8,8 @@ DualPool keeps just-in-time inventory in ERC-4626 vaults. PoolManager can report
 
 The library services and the `alfquote` CLI are implemented; the `uniswap-ai` skill contribution lands in the final phase. Product guide: [docs/cli.md](docs/cli.md).
 
+Built for ETHOnline 2026 — Uniswap Best Stack Contribution track. Integrator feedback to Uniswap Labs (documented vs observed, fully reproducible): [FEEDBACK.md](FEEDBACK.md).
+
 ## Contract map
 
 Each product claim links to the contract that implements it (source anchors live in [docs/pins.md](docs/pins.md)):
