@@ -14,7 +14,15 @@ npm run build
 node packages/cli/dist/main.js --help
 ```
 
-Inside the workspace the binary is also available as `npx alfquote` (workspace link).
+Inside the workspace the CLI can also be run through npm without a global install:
+
+```sh
+npm exec --workspace=@alfquote/cli -- alfquote --help
+```
+
+(`npx alfquote` also works when a `node_modules/.bin/alfquote` link exists — e.g. after a
+plain `npm install` — but a fresh `npm ci` does not create that link, so prefer the two
+forms above in documentation and scripts.)
 Configuration is a single environment variable or flag:
 
 ```sh

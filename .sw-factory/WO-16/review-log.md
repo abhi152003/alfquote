@@ -114,4 +114,39 @@ Delegate: general-purpose review subagent, read-only, self-contained prompt (age
 
 ---
 
+## Round 2 — 2026-09-12 (orchestrator correction round)
+
+Orchestrator verdict on 6bbc4f5: **one blocking correction** before approval — the recorded install contract `github:abhi152003/alfquote#phase2-baseline` is invalid because npm resolves a Git dependency from the repository *root* `package.json` (here: the private workspace root, no exports, no bin) and cannot select `packages/alfquote` / `packages/cli` from a Git URL. Recommended Option 1: pinned public reference + documented checkout; skill must not present ALFQuote as an npm dependency. Everything else verified and approved (public repo + tag + fork + upstream facts + CI green; local-only branch acceptable until WO-21; fork eval secrets = externally controlled).
+
+### Blocking
+
+1. **Invalid npm Git install contract** — `.sw-factory/WO-16/upstream-baseline.md` row "Skill install contract" and `implementation-plan.md` step 2. Dimension: requirements alignment / verification quality (the recorded plan must be a usable contract for WO-17).
+
+**Fix applied:**
+
+- `upstream-baseline.md`: row renamed **"Skill reference contract (WO-17)"** — pinned public reference + documented checkout (clone at `phase2-baseline` → `npm ci` → `npm run build` → `node packages/cli/dist/main.js …` or `npm exec --workspace=@alfquote/cli -- alfquote …`), with the npm-Git-dependency invalidity recorded verbatim so WO-17 cannot reintroduce it.
+- `implementation-plan.md` step 2 corrected to the same contract with a correction note.
+
+### Credential-free clone/build/run verification (orchestrator-required)
+
+Executed 2026-09-12 from `/tmp` with the git credential helper disabled (`git -c credential.helper= clone`), i.e. no GitHub credentials usable:
+
+1. `git -c credential.helper= clone --depth 1 --branch phase2-baseline https://github.com/abhi152003/alfquote.git` → HEAD `18636e20a214c6950152454a1656ad85714b25c5` (tag target confirmed).
+2. `npm ci` → exit 0 (public registry only).
+3. `npm run build` → exit 0.
+4. `node packages/cli/dist/main.js --version` → `0.1.0`; `--help` → usage; subcommand help works.
+5. `npm exec --workspace=@alfquote/cli -- alfquote --version` → `0.1.0`.
+6. **Additional finding (docs accuracy):** bare `npx alfquote` FAILS in a fresh checkout (`npm error could not determine executable to run`) — `npm ci` does not create the `node_modules/.bin/alfquote` link (the long-lived dev tree has it from prior `npm install` runs, which is why this was never observed before). `docs/cli.md` claimed the workspace link form unconditionally.
+
+**Fix applied (advisory-grade, fixed in the same pass):** `docs/cli.md` Installation section now documents `npm exec --workspace=@alfquote/cli -- alfquote --help` and explicitly caveats bare `npx alfquote` as unreliable after a fresh `npm ci`. `scripts/integration-mainnet.sh` was already using the direct-node form (`node --env-file-if-exists=.env packages/cli/dist/main.js`), so no code or test changes were needed. Temp clone removed after verification.
+
+### Round 2 Verdict
+
+- Total blocking: 1 (fixed and verified by execution)
+- Total advisory: 1 (fresh-checkout `npx` docs inaccuracy — fixed in `docs/cli.md`)
+- Files changed: `.sw-factory/WO-16/upstream-baseline.md`, `.sw-factory/WO-16/implementation-plan.md`, `docs/cli.md`
+- **Verdict:** APPROVED (orchestrator pre-authorized completion once this correction landed and the credential-free sequence was tested: "After the installation wording is corrected and tested as a credential-free clone/build/run sequence, WO-16 can be completed.")
+
+---
+
 <!-- Subsequent rounds: copy the structure above and increment the round number. -->
